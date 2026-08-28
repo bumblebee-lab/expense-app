@@ -211,8 +211,33 @@ input:-webkit-autofill:focus,input:-webkit-autofill:active{
 .mascot.sad .brow{transform:translateY(4px) rotate(var(--r,0deg))}
 .brow{transition:transform 200ms}
 
+/* ---- forgot-password panel ---- */
+.reset-pane{position:absolute;inset:0;background:rgba(20,29,51,.97);backdrop-filter:blur(22px);
+  border-radius:26px;padding:52px 30px 30px;opacity:0;visibility:hidden;
+  transform:translateY(14px) scale(.98);transition:all 280ms cubic-bezier(.4,0,.2,1);z-index:5}
+.login-card.resetting .reset-pane{opacity:1;visibility:visible;transform:none}
+.reset-back{position:absolute;top:16px;left:16px;width:38px;height:38px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#B9C7E4;
+  display:grid;place-items:center;font-size:16px;transition:all var(--t)}
+.reset-back:hover{background:rgba(255,255,255,.12);color:#fff}
+.reset-ic{width:62px;height:62px;margin:6px auto 18px;border-radius:20px;display:grid;place-items:center;
+  font-size:27px;color:#93C5FD;background:linear-gradient(135deg,rgba(59,130,246,.28),rgba(37,99,235,.12));
+  border:1px solid rgba(147,197,253,.28);animation:keyIn .5s cubic-bezier(.34,1.4,.5,1)}
+.reset-ic.ok{color:#6EE7B7;background:linear-gradient(135deg,rgba(16,185,129,.28),rgba(5,150,105,.12));
+  border-color:rgba(110,231,183,.3)}
+@keyframes keyIn{0%{transform:scale(.6) rotate(-18deg);opacity:0}100%{transform:none;opacity:1}}
+.reset-pane h2{font-size:21px;text-align:center;color:#EAF1FF;margin:0 0 8px}
+.reset-sub{text-align:center;color:#93A4C4;font-size:13.5px;line-height:1.55;margin:0 0 22px}
+.reset-note{display:flex;gap:11px;align-items:flex-start;background:rgba(59,130,246,.10);
+  border:1px solid rgba(59,130,246,.22);border-radius:14px;padding:13px 15px;
+  color:#A9BEE4;font-size:12.5px;line-height:1.55}
+.reset-note i{color:#7FA9F0;font-size:15px;margin-top:1px}
+.reset-link{display:block;width:100%;margin-top:14px;background:none;border:0;color:#7FA9F0;
+  font-size:13px;font-weight:600;padding:8px}
+.reset-link:hover{color:#A9C6F8}
+
 /* ---- card ---- */
-.login-card{position:relative;z-index:1;background:rgba(20,29,51,.72);
+.login-card{position:relative;z-index:1;min-height:430px;background:rgba(20,29,51,.72);
   border:1px solid rgba(255,255,255,.10);border-radius:26px;padding:84px 30px 30px;
   backdrop-filter:blur(22px) saturate(140%);box-shadow:0 30px 70px -25px rgba(0,0,0,.75),
   inset 0 1px 0 rgba(255,255,255,.07)}
@@ -284,7 +309,7 @@ input:-webkit-autofill:focus,input:-webkit-autofill:active{
 .login-alert{background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.32);color:#FCA5A5;
   border-radius:13px;padding:10px 14px;font-size:13px;margin-bottom:16px}
 .login-foot{text-align:center;color:#6F82A6;font-size:12px;margin-top:22px}
-@media(max-width:400px){.login-card{padding:74px 22px 26px}.mascot{width:172px;height:169px}}
+@media(max-width:400px){.login-card{padding:74px 22px 26px}.reset-pane{padding:52px 22px 26px}.mascot{width:172px;height:169px}}
 
 /* ============================ SHELL ============================ */
 .sidebar{position:fixed;inset:0 auto 0 0;width:256px;background:var(--side-grad);
@@ -730,6 +755,41 @@ html,body{overflow-x:hidden;max-width:100%}
 
       <div class="login-status" id="lgStatus">Signing you in…</div>
       <div class="login-foot">Track. Approve. Clear.</div>
+
+      <!-- ---- forgot password, slides over the sign-in form ---- -->
+      <div class="reset-pane" id="resetPane" aria-hidden="true">
+        <button class="reset-back" onclick="closeReset()" aria-label="Back to sign in">
+          <i class="bi bi-arrow-left"></i></button>
+
+        <div id="resetStep1">
+          <div class="reset-ic"><i class="bi bi-key"></i></div>
+          <h2>Forgot your password?</h2>
+          <p class="reset-sub">Tell us your username or email and we will send a temporary
+            password to the address on your account.</p>
+          <div id="resetAlert" class="login-alert hide"></div>
+          <div class="fld">
+            <input id="rsUser" autocomplete="username" placeholder=" ">
+            <label for="rsUser">Username or email</label>
+          </div>
+          <button class="btn-doorbtn mt-2" id="rsBtn" onclick="sendReset()">
+            <span class="doorbtn__label">Send reset link</span>
+          </button>
+          <button class="reset-link" onclick="closeReset()">Back to sign in</button>
+        </div>
+
+        <div id="resetStep2" class="hide">
+          <div class="reset-ic ok"><i class="bi bi-envelope-check"></i></div>
+          <h2>Check your inbox</h2>
+          <p class="reset-sub" id="resetMsg">If that account exists, a temporary password is on its way.</p>
+          <div class="reset-note">
+            <i class="bi bi-info-circle"></i>
+            <span>It can take a minute to arrive. Remember to check your spam folder, and change
+              the temporary password as soon as you are in.</span>
+          </div>
+          <button class="btn-doorbtn mt-3" onclick="closeReset()">
+            <span class="doorbtn__label">Back to sign in</span></button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1016,10 +1076,44 @@ async function doLogin(){
   }
 }
 
-async function forgotPw(){
-  const u=prompt('Enter your username or email:'); if(!u) return;
-  const r=await api('forgotPassword',{username:u});
-  toast(r.message||'If that account exists, a temporary password has been emailed.','info');
+/* ---- forgot password ---- */
+function forgotPw(){
+  const card=document.getElementById('loginCard');
+  document.getElementById('resetStep1').classList.remove('hide');
+  document.getElementById('resetStep2').classList.add('hide');
+  document.getElementById('resetAlert').classList.add('hide');
+  document.getElementById('rsUser').value=document.getElementById('lgUser').value.trim();
+  card.classList.add('resetting');
+  document.getElementById('resetPane').setAttribute('aria-hidden','false');
+  MASCOT.hide(false); MASCOT.mood(null);
+  setTimeout(()=>document.getElementById('rsUser').focus(),300);
+}
+function closeReset(){
+  const card=document.getElementById('loginCard');
+  card.classList.remove('resetting');
+  document.getElementById('resetPane').setAttribute('aria-hidden','true');
+  setTimeout(()=>document.getElementById('lgUser').focus(),300);
+}
+async function sendReset(){
+  const btn=document.getElementById('rsBtn'), al=document.getElementById('resetAlert');
+  const u=document.getElementById('rsUser').value.trim();
+  if(!u){ al.textContent='Enter your username or email.'; al.classList.remove('hide');
+          document.getElementById('rsUser').focus(); return; }
+  al.classList.add('hide');
+  btn.disabled=true;
+  btn.querySelector('.doorbtn__label').textContent='Sending…';
+  try{
+    const r=await api('forgotPassword',{username:u});
+    document.getElementById('resetMsg').textContent =
+      r.message || 'If that account exists, a temporary password is on its way.';
+    document.getElementById('resetStep1').classList.add('hide');
+    document.getElementById('resetStep2').classList.remove('hide');
+    chime('done');
+  }catch(e){
+    al.textContent='Cannot reach the server. Check your connection.'; al.classList.remove('hide');
+  }finally{
+    btn.disabled=false; btn.querySelector('.doorbtn__label').textContent='Send reset link';
+  }
 }
 
 function hardLogout(msg){
@@ -3140,7 +3234,7 @@ function vHelp(){
         <span class="badge-st st-cancel">Cancelled — withdrawn</span>
       </div>
     </div>
-    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.6</div>
+    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.7</div>
   </div>`);
 }
 
@@ -3160,7 +3254,14 @@ function editBudget(){
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter') return;
   const lg=document.getElementById('login');
-  if(lg && lg.style.display!=='none' && !document.getElementById('lgBtn').disabled) doLogin();
+  if(!lg || lg.style.display==='none') return;
+  const card=document.getElementById('loginCard');
+  if(card.classList.contains('resetting')) return sendReset();
+  if(!document.getElementById('lgBtn').disabled) doLogin();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && document.getElementById('loginCard')?.classList.contains('resetting'))
+    closeReset();
 });
 </script>
 </body>

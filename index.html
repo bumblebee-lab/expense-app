@@ -280,7 +280,7 @@ a{color:var(--accent-2);text-decoration:none}
 /* =================================================================================================
    CONFIGURATION — paste your Apps Script Web App /exec URL here
    ================================================================================================= */
-const API_URL = 'https://script.google.com/macros/s/AKfycbxidjmXPNu0t3wZr2FJhH1KnA7e-kWxeQQrPO_XzO3TrI0z6jkIK_qPg8vVULWe3y_0Ew/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw06sHYQXMTE7hXH0XbdiqrG-uSR8cx8Z01VVTCJ-4uWDgr8V5afLI3iiWUB8PEKOjXYQ/exec';
 
 /* ================================ STATE ================================ */
 const S = { token:null, user:null, perms:[], settings:{}, meta:null, mode:'company',
@@ -408,10 +408,14 @@ const NAV = () => {
   const n=[{k:'dashboard', i:'grid-1x2', t:'Dashboard'},
            {k:'expenses',  i:'receipt', t:'Company expenses'}];
   if(can('EXPENSE_CREATE')) n.push({k:'add', i:'plus-circle', t:'Add expense'});
-  if(can('APPROVE_MANAGER')||can('APPROVE_FINANCE')) n.push({k:'approvals', i:'check2-square', t:'Approval centre'});
-  if(can('PAYMENT_PROCESS')) n.push({k:'payments', i:'cash-stack', t:'Payment centre'});
-  if(can('REPORT_VIEW')) n.push({k:'reports', i:'bar-chart', t:'Reports'});
+  if(can('EXPENSE_APPROVE')||can('EXPENSE_CLEAR')||can('EXPENSE_PAYMENT'))
+    n.push({k:'approvals', i:'inbox', t:'My approvals', sec:'Workflow'});
+  if(can('EXPENSE_CLEAR')) n.push({k:'clearance', i:'patch-check', t:'Clearance centre'});
+  if(can('EXPENSE_PAYMENT')) n.push({k:'payments', i:'cash-stack', t:'Payment centre'});
+  if(can('EXPENSE_VIEW_ALL')) n.push({k:'monitor', i:'speedometer2', t:'Approval monitor'});
+  if(can('EXPENSE_EXPORT')) n.push({k:'reports', i:'bar-chart', t:'Reports'});
   if(can('USER_MANAGE')) n.push({k:'users', i:'people', t:'Users', sec:'Administration'});
+  if(can('WORKFLOW_MANAGE')) n.push({k:'workflow', i:'diagram-3', t:'Workflow builder'});
   if(can('MASTER_MANAGE')) n.push({k:'masters', i:'tags', t:'Categories & departments'});
   if(can('SETTINGS_MANAGE')) n.push({k:'settings', i:'gear', t:'Settings'});
   if(can('AUDIT_VIEW')) n.push({k:'audit', i:'shield-check', t:'Audit log'});
@@ -432,9 +436,9 @@ function renderNav(){
        {k:'add',i:'plus-lg',t:'Add',fab:1},{k:'reports',i:'pie-chart',t:'Analytics'},{k:'profile',i:'person',t:'Profile'}]
     : [{k:'dashboard',i:'house',t:'Home'},{k:'expenses',i:'receipt',t:'Company'},
        {k:'add',i:'plus-lg',t:'Add',fab:1},
-       {k:(can('APPROVE_MANAGER')||can('APPROVE_FINANCE'))?'approvals':'reports',
-        i:(can('APPROVE_MANAGER')||can('APPROVE_FINANCE'))?'check2-square':'bar-chart',
-        t:(can('APPROVE_MANAGER')||can('APPROVE_FINANCE'))?'Approve':'Reports'},
+       {k:(can('EXPENSE_APPROVE')||can('EXPENSE_CLEAR')||can('EXPENSE_PAYMENT'))?'approvals':'reports',
+        i:(can('EXPENSE_APPROVE')||can('EXPENSE_CLEAR')||can('EXPENSE_PAYMENT'))?'inbox':'bar-chart',
+        t:(can('EXPENSE_APPROVE')||can('EXPENSE_CLEAR')||can('EXPENSE_PAYMENT'))?'Approve':'Reports'},
        {k:'profile',i:'person',t:'Profile'}];
   document.getElementById('bnav').innerHTML=b.map(x=>`<a href="#" class="${x.fab?'fab ':''}${S.view===x.k?'active':''}"
      onclick="go('${x.k}');return false"><i class="bi bi-${x.i}"></i>${esc(x.t)}</a>`).join('');
@@ -459,10 +463,12 @@ function go(view){
   renderNav(); window.scrollTo(0,0);
   const V={dashboard:vDashboard, expenses:vExpenses, personal:vPersonal, add:vAdd, approvals:vApprovals,
            payments:vPayments, reports:vReports, users:vUsers, masters:vMasters, settings:vSettings,
-           audit:vAudit, notifications:vNotifications, profile:vProfile, help:vHelp};
+           audit:vAudit, notifications:vNotifications, profile:vProfile, help:vHelp,
+           clearance:vClearance, monitor:vMonitor, workflow:vWorkflow};
   const titles={dashboard:S.mode==='personal'?'Personal overview':'Company dashboard', expenses:'Company expenses',
     personal:'My personal expenses', add:S.mode==='personal'?'Add personal expense':'Add company expense',
-    approvals:'Approval centre', payments:'Payment centre', reports:'Reports', users:'Users',
+    approvals:'My approvals', clearance:'Clearance centre', monitor:'Approval monitor',
+    workflow:'Workflow builder', payments:'Payment centre', reports:'Reports', users:'Users',
     masters:'Categories & departments', settings:'Settings', audit:'Audit log',
     notifications:'Notifications', profile:'My profile', help:'Help'};
   document.getElementById('pageTitle').textContent=titles[view]||'';
@@ -501,13 +507,20 @@ function renderCompanyDash(r){
       <button class="${S.mode==='personal'?'on':''}" onclick="setMode('personal')">PERSONAL</button></div>
     ${dateFilterBar()}
   </div>
+  ${k.myTasks?`<div class="card-x p-3 mb-3 d-flex flex-wrap gap-3 align-items-center"
+      style="background:linear-gradient(135deg,#12336B,#1D4ED8);border:0;color:#fff">
+    <i class="bi bi-inbox" style="font-size:26px"></i>
+    <div><div class="fw-bold">${k.myTasks} item${k.myTasks>1?'s':''} waiting on you</div>
+      <div class="small" style="color:#C7D6F5">${money(k.myTasksAmount)} needs your decision</div></div>
+    <button class="btn btn-light btn-sm ms-auto fw-semibold" onclick="go('approvals')">Open inbox</button>
+  </div>`:''}
   <div class="row g-3 mb-3">
     ${kpiCard('Total expenses',money(k.total),k.count+' records','wallet2','#1D4ED8','#EEF3FF')}
     ${kpiCard('This month',money(k.month),'Current period','calendar3','#12336B','#EEF3FF')}
     ${kpiCard('Pending approval',money(k.pending),k.pendingCount+' waiting','hourglass-split','#B45309','#FFF7E6')}
-    ${kpiCard('Approved',money(k.approved),k.approvedCount+' cleared','patch-check','#15803D','#ECFDF3')}
+    ${kpiCard('Approved',money(k.approved),k.approvedCount+' claims','patch-check','#15803D','#ECFDF3')}
+    ${kpiCard('Clearance',money(k.clearance),k.clearanceCount+' to confirm','shield-check','#0F7B4F','#ECFDF3')}
     ${kpiCard('Paid',money(k.paid),k.paidCount+' settled','cash-coin','#166534','#DCFCE7')}
-    ${kpiCard('Rejected',money(k.rejected),k.rejectedCount+' returned','x-octagon','#B91C1C','#FEF2F2')}
   </div>
   <div class="row g-3">
     <div class="col-lg-8"><div class="card-x p-3">
@@ -628,14 +641,19 @@ function quickRange(v){
 
 /* ================================ SHARED ROW RENDER ================================ */
 function stClass(s){
-  if(!s) return 'st-draft';
-  if(s==='Paid'||s==='Closed') return 'st-paid';
-  if(s.indexOf('Rejected')>=0) return 'st-rejected';
-  if(s.indexOf('Approved')>=0) return 'st-approved';
-  if(s==='Cancelled') return 'st-cancel';
-  if(s==='Draft') return 'st-draft';
+  s = String(s||'');
+  if(['PAID','CLOSED','CLEARED'].includes(s)) return 'st-paid';
+  if(['REJECTED','RETURNED'].includes(s)) return 'st-rejected';
+  if(s==='APPROVED') return 'st-approved';
+  if(s==='CANCELLED') return 'st-cancel';
+  if(s==='DRAFT') return 'st-draft';
   return 'st-pending';
 }
+const ST_LABEL={DRAFT:'Draft',SUBMITTED:'Submitted',PENDING_APPROVAL:'Pending approval',
+  APPROVED:'Approved',REJECTED:'Rejected',RETURNED:'Returned',CLEARANCE_PENDING:'Clearance pending',
+  PENDING_FINAL_CONFIRMATION:'Final confirmation',CLEARED:'Cleared',PAYMENT_PENDING:'Payment pending',
+  PAID:'Paid',CLOSED:'Closed',CANCELLED:'Cancelled'};
+const stLabel = s => ST_LABEL[s] || String(s||'—');
 const CAT_IC={Fuel:'fuel-pump',Travel:'airplane',Hotel:'building',Food:'cup-hot',Courier:'box-seam',
   Stationery:'pencil',Transport:'bus-front',Transportation:'truck',Shopping:'bag',Rent:'house',
   Bills:'receipt-cutoff',Education:'mortarboard',Medical:'heart-pulse',Entertainment:'film',
@@ -653,7 +671,7 @@ function rowLine(e){
     </div>
     <div class="text-end">
       <div class="money">${money(e.Amount)}</div>
-      ${e.Status?`<span class="badge-st ${stClass(e.Status)}">${esc(e.Status)}</span>`:''}
+      ${e.Status?`<span class="badge-st ${stClass(e.Status)}">${esc(stLabel(e.Status))}</span>`:''}
     </div></div>`;
 }
 const emptyBox=(t,s)=>`<div class="empty"><i class="bi bi-inbox"></i><div class="fw-semibold">${esc(t)}</div>
@@ -691,7 +709,7 @@ async function vExpenses(){
     <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
       <div class="fw-bold">${r.total} expense${r.total===1?'':'s'}</div>
       <div class="d-flex gap-2">
-        ${can('REPORT_EXPORT')?`<button class="btn btn-sm btn-soft" onclick="exportCurrent('company')"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>`:''}
+        ${can('EXPENSE_EXPORT')?`<button class="btn btn-sm btn-soft" onclick="exportCurrent('company')"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>`:''}
         ${can('EXPENSE_CREATE')?`<button class="btn btn-sm btn-accent" onclick="go('add')"><i class="bi bi-plus-lg me-1"></i>New</button>`:''}
       </div>
     </div>
@@ -703,7 +721,7 @@ async function vExpenses(){
           <td class="fw-semibold">${esc(e.ExpenseID)}</td><td>${dshort(e.ExpenseDate)}</td>
           <td>${esc(e.EmployeeName)}</td><td>${esc(e.Department||'—')}</td><td>${esc(e.Category)}</td>
           <td class="text-end money">${money(e.Amount)}</td>
-          <td><span class="badge-st ${stClass(e.Status)}">${esc(e.Status)}</span></td>
+          <td><span class="badge-st ${stClass(e.Status)}">${esc(stLabel(e.Status))}</span></td>
           <td class="text-end"><i class="bi bi-chevron-right text-muted-2"></i></td></tr>`).join('')}</tbody>
       </table>
       ${r.rows.length?'':emptyBox('No expenses match these filters','Adjust the filters or clear them.')}
@@ -715,7 +733,7 @@ async function vExpenses(){
 function select(id,label,list,val,key){
   return `<select class="form-select form-select-sm" onchange="S.filters['${key}']=this.value;S.page=1;${S.view==='expenses'?'vExpenses':'vPersonal'}()">
     <option value="">${esc(label)}</option>
-    ${list.map(o=>`<option ${val===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    ${list.map(o=>`<option value="${esc(o)}" ${val===o?'selected':''}>${esc(key==='status'?stLabel(o):o)}</option>`).join('')}</select>`;
 }
 function pager(r,fn){
   if(r.pages<=1) return '';
@@ -733,7 +751,7 @@ async function vPersonal(){
   const r=await api('getPersonalExpenses',{filters:S.filters,userId:S.personalUser||'',page:S.page,pageSize:25});
   if(!r.ok) return setView(alertBox(r.message));
   const cats=(S.meta&&S.meta.personalCategories)||[];
-  const reviewer=can('VIEW_PERSONAL_EXPENSES');
+  const reviewer=can('EXPENSE_VIEW_PERSONAL');
   const viewing=S.personalUser&&S.personalUser!==S.user.UserID
     ? ((S.meta.users||[]).find(u=>u.UserID===S.personalUser)||{}).Name : null;
   setView(`
@@ -796,7 +814,8 @@ function formCompany(edit){
       <div class="col-md-6"><label class="form-label small fw-semibold">Expense date *</label>
         <input id="fDate" type="date" class="form-control" value="${esc(e.ExpenseDate||today())}" max="${today()}"></div>
       <div class="col-md-6"><label class="form-label small fw-semibold">Amount (${esc(S.settings.Currency||'PKR')}) *</label>
-        <input id="fAmt" type="number" inputmode="decimal" class="form-control" value="${esc(e.Amount||'')}" placeholder="0"></div>
+        <input id="fAmt" type="number" inputmode="decimal" class="form-control" value="${esc(e.Amount||'')}"
+          placeholder="0" oninput="clearTimeout(S.apvT);S.apvT=setTimeout(loadApprovers,400)"></div>
       <div class="col-md-6"><label class="form-label small fw-semibold">Payment method</label>
         <select id="fPay" class="form-select">${['Cash','Company Card','Personal Card','Bank Transfer','Petty Cash','Other']
           .map(p=>`<option ${e.PaymentMethod===p?'selected':''}>${esc(p)}</option>`).join('')}</select></div>
@@ -822,6 +841,11 @@ function formCompany(edit){
       <div class="col-12"><label class="form-label small fw-semibold">Remarks</label>
         <input id="fRemarks" class="form-control" value="${esc(e.Remarks||'')}" placeholder="Anything the approver should know"></div>
     </div>
+    <div class="card-x p-3 mt-4" style="background:var(--accent-soft);border:0">
+      <div class="fw-bold mb-2"><i class="bi bi-person-check me-2"></i>Approval</div>
+      <div id="apvBox" class="small text-muted-2">
+        <span class="spinner-border spinner-border-sm me-2"></span>Working out who approves this…</div>
+    </div>
     <div class="d-flex gap-2 mt-4">
       <button class="btn btn-accent px-4" onclick="saveCompany(true)">${edit?'Save and resubmit':'Submit for approval'}</button>
       ${edit?'':'<button class="btn btn-light" onclick="saveCompany(false)">Save as draft</button>'}
@@ -829,6 +853,36 @@ function formCompany(edit){
     </div>
   </div>`);
   S.editing=edit||null; S.receipt=null; S.attachment=null;
+  loadApprovers();
+}
+
+/** Ask the server who this claim will go to. The route comes from the workflow, not from names. */
+async function loadApprovers(){
+  const box=document.getElementById('apvBox'); if(!box) return;
+  const amount=Number(val('fAmt')||0);
+  const r=await api('getApprovers',{amount});
+  if(!r.ok){ box.innerHTML=`<span class="text-danger">${esc(r.message)}</span>`; return; }
+  S.approvers=r;
+  const chain=(r.steps||[]).map(s=>`<span class="badge-st ${s.TaskType==='PAYMENT'?'st-paid':
+      s.TaskType==='CLEARANCE'?'st-approved':'st-pending'}">${esc(s.StepName)}</span>`)
+    .join('<i class="bi bi-chevron-right mx-1 text-muted-2" style="font-size:10px"></i>');
+
+  box.innerHTML = `
+    ${r.canChoose ? `
+      <label class="form-label small fw-semibold text-dark">Approval required from</label>
+      <select id="fApprover" class="form-select mb-2">
+        <option value="">${r.autoAssign?`Automatic — ${esc(r.autoAssign.Name)} (${esc(r.autoAssign.Role)})`:'Automatic'}</option>
+        ${r.approvers.map(u=>`<option value="${esc(u.UserID)}">${esc(u.Name)} — ${esc(u.Role)}${u.Department?' · '+esc(u.Department):''}</option>`).join('')}
+      </select>`
+    : r.autoAssign ? `
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div class="cat-ic" style="width:34px;height:34px;font-size:15px"><i class="bi bi-person"></i></div>
+        <div><div class="fw-semibold text-dark">${esc(r.autoAssign.Name)}</div>
+          <div class="small">${esc(r.autoAssign.Role)}${r.autoAssign.Department?' · '+esc(r.autoAssign.Department):''}</div></div>
+      </div>`
+    : `<div class="text-danger mb-2">No approver is configured for this amount. Ask your administrator.</div>`}
+    ${chain?`<div class="mt-2"><div class="small fw-semibold text-dark mb-1">This claim will follow:</div>
+      <div class="d-flex flex-wrap align-items-center gap-1">${chain}</div></div>`:''}`;
 }
 
 function formPersonal(edit){
@@ -935,7 +989,7 @@ async function saveCompany(submit){
   const body={ Category:val('fCat'), SubCategory:val('fSub'), Department:val('fDep'), Branch:val('fBr'),
     Project:val('fProj'), ExpenseDate:val('fDate'), Amount:Number(val('fAmt')||0),
     PaymentMethod:val('fPay'), Description:val('fDesc'), Remarks:val('fRemarks'),
-    submit:!!submit, ClientRef:uuid() };
+    submit:!!submit, approverId:val('fApprover'), ClientRef:uuid() };
   if(!body.Amount||body.Amount<=0) return fErr('Enter an amount greater than zero.');
   if(!navigator.onLine){ queueOffline('company',body); return; }
   const btns=document.querySelectorAll('.btn-accent'); btns.forEach(b=>b.disabled=true);
@@ -1002,23 +1056,42 @@ window.addEventListener('offline', ()=> showOffline('You are offline. New expens
 async function openExpense(id){
   const r=await api('getExpenseDetails',{ExpenseID:id});
   if(!r.ok) return toast(r.message,'danger');
-  const e=r.expense, ap=r.approvals, pay=r.payments;
+  const e=r.expense, task=r.myTask, acts=r.actions||[];
   document.getElementById('dtTitle').innerHTML=`${esc(e.ExpenseID)}
-    <span class="badge-st ${stClass(e.Status)} ms-2">${esc(e.Status)}</span>`;
+    <span class="badge-st ${stClass(e.Status)} ms-2">${esc(stLabel(e.Status))}</span>`;
+
+  const amounts = [
+    ['Claimed', e.ClaimedAmount||e.Amount, '#64748B'],
+    ['Approved', e.ApprovedAmount, '#1D4ED8'],
+    ['Cleared', e.ClearedAmount, '#0F7B4F'],
+    ['Paid', e.PaidAmount, '#166534']
+  ].filter(a=>a[1]!==''&&a[1]!==undefined&&a[1]!==null);
+
   document.getElementById('dtBody').innerHTML=`
     <div class="row g-4">
       <div class="col-md-7">
         <div class="d-flex align-items-center gap-3 mb-3">
           <div class="cat-ic" style="width:48px;height:48px"><i class="bi bi-${catIcon(e.Category)}"></i></div>
-          <div><div class="h4 mb-0 money">${money(e.Amount)}</div>
+          <div><div class="h4 mb-0 money">${money(e.ClaimedAmount||e.Amount)}</div>
             <div class="small text-muted-2">${esc(e.Category)}${e.SubCategory?' · '+esc(e.SubCategory):''}</div></div>
         </div>
-        ${kv('Employee',e.EmployeeName+' ('+(e.EmployeeID||'—')+')')}
-        ${kv('Department',e.Department)}${kv('Branch',e.Branch)}${kv('Project',e.Project||'—')}
-        ${kv('Expense date',dshort(e.ExpenseDate))}${kv('Payment method',e.PaymentMethod)}
-        ${kv('Description',e.Description||'—')}
+        <div class="card-x p-3 mb-3">
+          <div class="row g-2 text-center">
+            ${amounts.map(a=>`<div class="col"><div class="small text-muted-2">${a[0]}</div>
+              <div class="fw-bold money" style="color:${a[2]}">${money(a[1])}</div></div>`).join('')}
+          </div>
+          ${e.ApprovedAmount!==''&&Number(e.ApprovedAmount)<Number(e.ClaimedAmount||e.Amount)
+            ? `<div class="small mt-2 p-2 rounded" style="background:var(--amber-50);color:#B45309">
+                 <i class="bi bi-exclamation-circle me-1"></i>Partly approved — difference
+                 ${money(Number(e.ClaimedAmount||e.Amount)-Number(e.ApprovedAmount))}</div>`:''}
+        </div>
+        ${kv('Created by', e.EmployeeName+' ('+(e.EmployeeID||'—')+')')}
+        ${kv('Department', e.Department)}${kv('Branch', e.Branch)}${kv('Project', e.Project||'—')}
+        ${kv('Expense date', dshort(e.ExpenseDate))}${kv('Payment method', e.PaymentMethod)}
+        ${kv('Description', e.Description||'—')}
+        ${e.CurrentApproverName?kv('Currently with', e.CurrentApproverName):''}
         ${e.RejectReason?kv('Rejection reason','<span class="text-danger fw-semibold">'+esc(e.RejectReason)+'</span>',1):''}
-        ${kv('Created',dtime(e.CreatedDate))}${kv('Last updated',dtime(e.UpdatedDate))}
+        ${kv('Submitted', e.SubmittedDate?dtime(e.SubmittedDate):'Not yet submitted')}
         <div class="mt-3 d-flex gap-2 flex-wrap">${e.ReceiptFileID
           ?`<button class="btn btn-sm btn-soft" onclick="viewReceipt('${e.ReceiptFileID}')"><i class="bi bi-receipt me-1"></i>View receipt</button>`
           :'<span class="small text-muted-2"><i class="bi bi-paperclip"></i> No receipt attached</span>'}
@@ -1028,31 +1101,77 @@ async function openExpense(id){
       </div>
       <div class="col-md-5">
         <div class="fw-bold mb-3">Approval flow</div>
-        ${timeline(e,ap)}
-        ${pay.length?`<div class="fw-bold mt-4 mb-2">Payment</div>
-          ${pay.map(p=>`<div class="card-x p-3 mb-2">
-            ${kv('Reference',p.PaymentReference||'—')}${kv('Method',p.PaymentMethod)}
-            ${kv('Paid on',dshort(p.PaymentDate))}${kv('Amount',money(p.Amount))}
-            ${p.Remarks?kv('Remarks',p.Remarks):''}</div>`).join('')}`:''}
+        ${timeline(e, r.history, r.steps, r.tasks)}
       </div>
     </div>`;
-  const mine=e.UserID===S.user.UserID;
-  const canEdit = mine && ['Draft','Manager Rejected','Finance Rejected'].includes(e.Status);
+
   let foot='';
-  if(r.canApprove==='MANAGER'||r.canApprove==='FINANCE')
-    foot+=`<button class="btn btn-outline-danger" onclick="rejectDlg('${e.ExpenseID}')">Reject</button>
-           <button class="btn btn-success" onclick="approveExp('${e.ExpenseID}')">Approve</button>`;
-  if(r.canApprove==='PAYMENT')
-    foot+=`<button class="btn btn-accent" onclick="payDlg('${e.ExpenseID}',${Number(e.Amount)})">Record payment</button>`;
-  if(e.Status==='Paid' && can('PAYMENT_PROCESS'))
-    foot+=`<button class="btn btn-outline-success" onclick="closeExp('${e.ExpenseID}')">Mark as closed</button>`;
-  if(canEdit) foot+=`<button class="btn btn-light" onclick="editExpense('${e.ExpenseID}')">Edit</button>`;
-  if(mine && !['Paid','Closed','Cancelled'].includes(e.Status))
-    foot+=`<button class="btn btn-link text-danger" onclick="cancelExp('${e.ExpenseID}')">Cancel claim</button>`;
+  if(task && acts.length){
+    if(acts.includes('REASSIGN')) foot+=`<button class="btn btn-light btn-sm" onclick="taskAction('${task.TaskID}','reassign')">Reassign</button>`;
+    if(acts.includes('CLARIFY')) foot+=`<button class="btn btn-light btn-sm" onclick="taskAction('${task.TaskID}','clarify')">Ask a question</button>`;
+    if(acts.includes('SEND_BACK')) foot+=`<button class="btn btn-outline-warning btn-sm" onclick="taskAction('${task.TaskID}','sendback')">Send back</button>`;
+    if(acts.includes('REJECT')) foot+=`<button class="btn btn-outline-danger" onclick="taskAction('${task.TaskID}','reject')">Reject</button>`;
+    if(acts.includes('APPROVE')) foot+=`<button class="btn btn-success" onclick="taskAction('${task.TaskID}','approve')">Approve</button>`;
+    if(acts.includes('CLEAR')) foot+=`<button class="btn btn-success" onclick="taskAction('${task.TaskID}','clear')">Confirm &amp; clear</button>`;
+    if(acts.includes('PAY')) foot+=`<button class="btn btn-accent" onclick="taskAction('${task.TaskID}','pay')">Record payment</button>`;
+  }
+  const mine=e.UserID===S.user.UserID;
+  if(mine && ['DRAFT','RETURNED','REJECTED'].includes(e.Status))
+    foot+=`<button class="btn btn-light" onclick="editExpense('${e.ExpenseID}')">Edit &amp; resubmit</button>`;
+  if(mine && !['PAID','CLOSED','CANCELLED'].includes(e.Status))
+    foot+=`<button class="btn btn-link text-danger btn-sm" onclick="cancelExp('${e.ExpenseID}')">Cancel</button>`;
+  if(e.Status==='PAID' && can('EXPENSE_PAYMENT'))
+    foot+=`<button class="btn btn-outline-success btn-sm" onclick="closeExp('${e.ExpenseID}')">Mark closed</button>`;
   foot+=`<button class="btn btn-light" data-bs-dismiss="modal">Close</button>`;
   document.getElementById('dtFoot').innerHTML=foot;
-  S.detailCache=e;
+  S.detailCache=e; S.tasks=S.tasks||[];
   new bootstrap.Modal('#mDetail').show();
+}
+
+/** Timeline built from real history rows plus the configured steps still to come. */
+function timeline(e, history, steps, tasks){
+  const ICON={CREATED:'plus',SUBMITTED:'send',ASSIGNED:'person-check',APPROVED:'check-lg',
+    PARTIALLY_APPROVED:'check-lg',REJECTED:'x-lg',RETURNED:'arrow-counterclockwise',
+    CLARIFICATION_REQUESTED:'question-lg',REASSIGNED:'arrow-left-right',CLEARED:'patch-check',
+    PAID:'cash-coin',CLOSED:'flag',CANCELLED:'slash-circle',UPDATED:'pencil',PAYMENT_FAILED:'exclamation'};
+  const BAD=['REJECTED','RETURNED','CANCELLED','PAYMENT_FAILED'];
+  const done = (history||[]).map(h=>`
+    <div class="tl-item ${BAD.includes(h.Action)?'bad':'done'}">
+      <div class="tl-dot"><i class="bi bi-${ICON[h.Action]||'dot'}"></i></div>
+      <div class="fw-semibold small">${esc((h.Action||'').replace(/_/g,' ').toLowerCase()
+        .replace(/^./,c=>c.toUpperCase()))}${h.ToName?' → '+esc(h.ToName):''}</div>
+      <div class="small text-muted-2">${esc(h.FromName||'System')} · ${dtime(h.Timestamp)}
+        ${Number(h.Amount)?' · '+money(h.Amount):''}</div>
+      ${h.Remarks?`<div class="small mt-1 p-2 rounded" style="background:#F8FAFC">${esc(h.Remarks)}</div>`:''}
+    </div>`).join('');
+
+  const openTask=(tasks||[]).find(t=>t.Status==='Pending');
+  const currentStep = openTask ? Number(openTask.StepNumber) : 0;
+  const upcoming = (steps||[]).filter(s=>Number(s.StepNumber) > currentStep &&
+      !['PAID','CLOSED','CANCELLED','REJECTED'].includes(e.Status))
+    .map(s=>`<div class="tl-item"><div class="tl-dot"><i class="bi bi-dot"></i></div>
+      <div class="fw-semibold small text-muted-2">${esc(s.StepName)}</div>
+      <div class="small text-muted-2">Not started</div></div>`).join('');
+
+  const now = openTask?`<div class="tl-item now"><div class="tl-dot"><i class="bi bi-clock"></i></div>
+      <div class="fw-semibold small">${esc(openTask.StepName)}</div>
+      <div class="small text-muted-2">Waiting on ${esc(openTask.AssignedToName)}
+        ${openTask.DueDate?' · due '+dtime(openTask.DueDate):''}</div></div>`:'';
+
+  return `<div class="tl">${done}${now}${upcoming}</div>`;
+}
+
+async function closeExp(id){
+  const remarks=prompt('Closing remark (optional):')||'';
+  const r=await api('closeExpense',{ExpenseID:id,remarks});
+  if(!r.ok) return toast(r.message,'danger');
+  bootstrap.Modal.getInstance('#mDetail').hide(); toast('Expense closed.'); go(S.view);
+}
+async function cancelExp(id){
+  if(!confirm('Cancel this claim?')) return;
+  const r=await api('cancelExpense',{ExpenseID:id});
+  if(!r.ok) return toast(r.message,'danger');
+  bootstrap.Modal.getInstance('#mDetail').hide(); toast('Claim cancelled.'); go(S.view);
 }
 const kv=(k,v,raw)=>`<div class="d-flex justify-content-between py-2 border-bottom" style="border-color:#F1F5F9!important">
   <div class="small text-muted-2">${esc(k)}</div><div class="small fw-semibold text-end ms-3">${raw?v:esc(v||'—')}</div></div>`;
@@ -1131,86 +1250,429 @@ async function cancelExp(id){
 }
 
 /* ================================ APPROVE / REJECT / PAY ================================ */
-async function approveExp(id){
-  const remarks=prompt('Add a remark (optional):')||'';
-  const r=await api('approveExpense',{ExpenseID:id,remarks});
-  if(!r.ok) return toast(r.message,'danger');
-  bootstrap.Modal.getInstance('#mDetail').hide(); toast('Expense approved.'); go(S.view);
+/* ================================ TASK ACTIONS (v2) ================================ */
+const REJECT_REASONS=['Invalid Receipt','Incorrect Amount','Wrong Category','Duplicate Expense',
+  'Personal Expense','Policy Violation','Insufficient Information','Other'];
+
+function approveDlg(task, expense){
+  const claimed = Number(expense.ClaimedAmount || expense.Amount || 0);
+  const partial = S.settings.AllowPartialApproval === 'true';
+  bootstrap.Modal.getInstance('#mDetail')?.hide();
+  formModal('Approve expense', `
+    <div class="card-x p-3 mb-3" style="background:var(--accent-soft);border:0">
+      <div class="d-flex justify-content-between"><span class="small text-muted-2">Expense</span>
+        <span class="fw-bold">${esc(expense.ExpenseID)}</span></div>
+      <div class="d-flex justify-content-between"><span class="small text-muted-2">Created by</span>
+        <span class="fw-semibold">${esc(expense.EmployeeName)}</span></div>
+      <div class="d-flex justify-content-between"><span class="small text-muted-2">Claimed amount</span>
+        <span class="fw-bold money">${money(claimed)}</span></div>
+    </div>
+    ${partial?`<label class="form-label small fw-semibold">Amount you are approving</label>
+      <div class="input-group mb-2"><span class="input-group-text">${esc(S.settings.Currency||'PKR')}</span>
+        <input id="apAmt" type="number" class="form-control" value="${claimed}" max="${claimed}"
+          oninput="document.getElementById('apReasonBox').classList.toggle('hide', Number(this.value)>=${claimed})"></div>
+      <div id="apReasonBox" class="hide mb-3">
+        <label class="form-label small fw-semibold text-warning-emphasis">Reason for reducing the amount *</label>
+        <input id="apReason" class="form-control" placeholder="Why is the approved amount lower?">
+      </div>`:''}
+    <label class="form-label small fw-semibold">Remarks</label>
+    <textarea id="apRemarks" class="form-control" rows="2" placeholder="Optional note for the record"></textarea>`,
+    async ()=>{
+      const amt = partial ? Number(val('apAmt')) : claimed;
+      if(partial && amt < claimed && !val('apReason')){ toast('Give a reason for the reduction.','warn'); return false; }
+      const r = await api('approveTask',{ taskId:task.TaskID, approvedAmount:amt,
+        reductionReason:val('apReason'), remarks:val('apRemarks') });
+      if(!r.ok){ toast(r.message,'danger'); return false; }
+      toast('Approved. Now at: '+stLabel(r.status)); refreshCurrent(); return true;
+    },'Confirm approval');
 }
-const REJECT_REASONS=['Missing Receipt','Incorrect Amount','Wrong Category','Personal Expense',
-                      'Duplicate Claim','Invalid Expense','Policy Violation','Other'];
-function rejectDlg(id){
-  bootstrap.Modal.getInstance('#mDetail').hide();
+
+function rejectDlg(task, expense){
+  bootstrap.Modal.getInstance('#mDetail')?.hide();
   formModal('Reject expense', `
     <label class="form-label small fw-semibold">Reason *</label>
     <select id="rjReason" class="form-select mb-3">${REJECT_REASONS.map(r=>`<option>${esc(r)}</option>`).join('')}</select>
-    <label class="form-label small fw-semibold">Remarks for the employee</label>
-    <textarea id="rjRemarks" class="form-control" rows="3" placeholder="Explain what needs to change"></textarea>`,
+    <label class="form-label small fw-semibold">Remarks for the creator</label>
+    <textarea id="rjRemarks" class="form-control" rows="3" placeholder="Explain what was wrong"></textarea>`,
     async ()=>{
-      const r=await api('rejectExpense',{ExpenseID:id,reason:val('rjReason'),remarks:val('rjRemarks')});
+      const r = await api('rejectTask',{ taskId:task.TaskID, reason:val('rjReason'), remarks:val('rjRemarks') });
       if(!r.ok){ toast(r.message,'danger'); return false; }
-      toast('Expense rejected. The employee has been notified.'); go(S.view); return true;
-    },'Reject expense');
+      toast('Rejected. The creator has been notified.'); refreshCurrent(); return true;
+    },'Confirm rejection');
 }
-function payDlg(id,amount){
-  bootstrap.Modal.getInstance('#mDetail').hide();
+
+function sendBackDlg(task){
+  bootstrap.Modal.getInstance('#mDetail')?.hide();
+  formModal('Send back for correction', `
+    <p class="small text-muted-2">The creator can edit and resubmit. The full history is kept.</p>
+    <label class="form-label small fw-semibold">What needs correcting? *</label>
+    <textarea id="sbRemarks" class="form-control" rows="3" placeholder="e.g. receipt is unreadable"></textarea>`,
+    async ()=>{
+      const r = await api('sendBackTask',{ taskId:task.TaskID, remarks:val('sbRemarks') });
+      if(!r.ok){ toast(r.message,'danger'); return false; }
+      toast('Sent back to the creator.'); refreshCurrent(); return true;
+    },'Send back');
+}
+
+function clarifyDlg(task){
+  bootstrap.Modal.getInstance('#mDetail')?.hide();
+  formModal('Request clarification', `
+    <p class="small text-muted-2">Your question is sent to the creator. The task stays with you.</p>
+    <textarea id="clRemarks" class="form-control" rows="3" placeholder="What do you need to know?"></textarea>`,
+    async ()=>{
+      const r = await api('requestClarification',{ taskId:task.TaskID, remarks:val('clRemarks') });
+      if(!r.ok){ toast(r.message,'danger'); return false; }
+      toast('Question sent.'); return true;
+    },'Send question');
+}
+
+function reassignDlg(task){
+  bootstrap.Modal.getInstance('#mDetail')?.hide();
+  const users=(S.meta&&S.meta.users||[]).filter(u=>u.UserID!==S.user.UserID && u.Status==='Active');
+  formModal('Reassign this task', `
+    <label class="form-label small fw-semibold">Assign to *</label>
+    <select id="raUser" class="form-select mb-3">
+      ${users.map(u=>`<option value="${esc(u.UserID)}">${esc(u.Name)} — ${esc(u.Role)}${u.Department?' · '+esc(u.Department):''}</option>`).join('')}
+    </select>
+    <label class="form-label small fw-semibold">Reason</label>
+    <input id="raRemarks" class="form-control" placeholder="Optional">`,
+    async ()=>{
+      const r = await api('reassignTask',{ taskId:task.TaskID, toUserId:val('raUser'), remarks:val('raRemarks') });
+      if(!r.ok){ toast(r.message,'danger'); return false; }
+      toast('Reassigned to '+r.assignedTo+'.'); refreshCurrent(); return true;
+    },'Reassign');
+}
+
+function clearDlg(task, expense){
+  const approved = Number(expense.ApprovedAmount || expense.Amount || 0);
+  bootstrap.Modal.getInstance('#mDetail')?.hide();
+  formModal('Confirm and clear', `
+    <div class="card-x p-3 mb-3" style="background:#ECFDF3;border:0">
+      <div class="d-flex justify-content-between"><span class="small text-muted-2">Claimed</span>
+        <span class="fw-semibold">${money(expense.ClaimedAmount||expense.Amount)}</span></div>
+      <div class="d-flex justify-content-between"><span class="small text-muted-2">Approved</span>
+        <span class="fw-bold money" style="color:var(--green)">${money(approved)}</span></div>
+    </div>
+    <label class="form-label small fw-semibold">Amount to clear</label>
+    <div class="input-group mb-3"><span class="input-group-text">${esc(S.settings.Currency||'PKR')}</span>
+      <input id="clAmt" type="number" class="form-control" value="${approved}" max="${approved}"></div>
+    <label class="form-label small fw-semibold">Clearance remarks</label>
+    <input id="clRem" class="form-control" placeholder="Optional">
+    <p class="small text-muted-2 mt-3 mb-0">This marks the expense as CLEARED and sends it on for payment.</p>`,
+    async ()=>{
+      const r = await api('clearTask',{ taskId:task.TaskID, clearedAmount:Number(val('clAmt')), remarks:val('clRem') });
+      if(!r.ok){ toast(r.message,'danger'); return false; }
+      toast('Cleared. Now at: '+stLabel(r.status)); refreshCurrent(); return true;
+    },'Confirm & clear');
+}
+
+function payDlg(task, expense){
+  const due = Number(expense.ClearedAmount || expense.ApprovedAmount || expense.Amount || 0);
+  bootstrap.Modal.getInstance('#mDetail')?.hide();
   formModal('Record payment', `
     <div class="row g-3">
       <div class="col-6"><label class="form-label small fw-semibold">Amount paid</label>
-        <input id="pyAmt" type="number" class="form-control" value="${amount}"></div>
+        <input id="pyAmt" type="number" class="form-control" value="${due}"></div>
       <div class="col-6"><label class="form-label small fw-semibold">Payment date</label>
         <input id="pyDate" type="date" class="form-control" value="${today()}"></div>
       <div class="col-6"><label class="form-label small fw-semibold">Method</label>
         <select id="pyMethod" class="form-select">${['Bank Transfer','Cash','Cheque','Payroll','Other'].map(m=>`<option>${m}</option>`).join('')}</select></div>
       <div class="col-6"><label class="form-label small fw-semibold">Status</label>
-        <select id="pyStatus" class="form-select">${['Paid','Payment Failed','Cancelled'].map(m=>`<option>${m}</option>`).join('')}</select></div>
+        <select id="pyStatus" class="form-select">${['Paid','Payment Failed'].map(m=>`<option>${m}</option>`).join('')}</select></div>
       <div class="col-12"><label class="form-label small fw-semibold">Reference</label>
         <input id="pyRef" class="form-control" placeholder="Transaction or cheque number"></div>
       <div class="col-12"><label class="form-label small fw-semibold">Remarks</label>
         <input id="pyRemarks" class="form-control"></div>
     </div>`,
     async ()=>{
-      const r=await api('processPayment',{ExpenseID:id,amount:Number(val('pyAmt')),paymentDate:val('pyDate'),
-        method:val('pyMethod'),status:val('pyStatus'),reference:val('pyRef'),remarks:val('pyRemarks')});
+      const r = await api('payTask',{ taskId:task.TaskID, amount:Number(val('pyAmt')), paymentDate:val('pyDate'),
+        method:val('pyMethod'), status:val('pyStatus'), reference:val('pyRef'), remarks:val('pyRemarks') });
       if(!r.ok){ toast(r.message,'danger'); return false; }
-      toast('Payment recorded.'); go(S.view); return true;
+      toast('Payment recorded.'); refreshCurrent(); return true;
     },'Save payment');
 }
+
 function formModal(title, body, onSave, saveLabel){
   document.getElementById('fmTitle').textContent=title;
   document.getElementById('fmBody').innerHTML=body;
   const btn=document.getElementById('fmSave'); btn.textContent=saveLabel||'Save';
   const modal=new bootstrap.Modal('#mForm');
-  btn.onclick=async()=>{ btn.disabled=true; try{ if(await onSave()!==false) modal.hide(); } finally{ btn.disabled=false; } };
+  btn.onclick=async()=>{ btn.disabled=true;
+    const old=btn.textContent; btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Processing';
+    try{ if(await onSave()!==false) modal.hide(); }
+    finally{ btn.disabled=false; btn.textContent=old; } };
   modal.show();
 }
+function refreshCurrent(){ loadNotifCount(); go(S.view); }
 
-/* ================================ APPROVALS / PAYMENTS ================================ */
+/* ================================ APPROVAL INBOX (v2) ================================ */
+const TASK_TABS=[
+  {k:'pending',   t:'Pending',   f:r=>r.Status==='Pending'&&r.TaskType==='APPROVAL'},
+  {k:'clearance', t:'Clearance', f:r=>r.Status==='Pending'&&r.TaskType==='CLEARANCE'},
+  {k:'payment',   t:'Payment',   f:r=>r.Status==='Pending'&&r.TaskType==='PAYMENT'},
+  {k:'approved',  t:'Approved',  f:r=>r.Status==='Approved'},
+  {k:'rejected',  t:'Rejected',  f:r=>r.Status==='Rejected'},
+  {k:'returned',  t:'Returned',  f:r=>r.Status==='Returned'},
+  {k:'all',       t:'All',       f:()=>true}
+];
+
 async function vApprovals(){
   loading();
-  const r=await api('getPendingApprovals');
+  const r=await api('getMyTasks');
   if(!r.ok) return setView(alertBox(r.message));
-  setView(`<div class="card-x">
-    <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
-      <div><div class="fw-bold">${r.total} waiting for you</div>
-        <div class="small text-muted-2">Open a claim to approve or reject it</div></div>
-      <button class="btn btn-sm btn-soft" onclick="vApprovals()"><i class="bi bi-arrow-clockwise"></i></button></div>
-    ${r.rows.length? r.rows.map(rowLine).join('') : emptyBox('Nothing to approve','New claims will appear here as they arrive.')}
-  </div>`);
+  S.tasks=r.rows; S.taskCounts=r.counts;
+  renderTasks(S.taskTab||'pending');
 }
-async function vPayments(){
-  loading();
-  const r=await api('getCompanyExpenses',{filters:{status:'Payment Pending'},page:1,pageSize:100});
-  const paid=await api('getCompanyExpenses',{filters:{status:'Paid'},page:1,pageSize:10});
+
+function renderTasks(tab){
+  S.taskTab=tab;
+  const c=S.taskCounts, tabDef=TASK_TABS.find(t=>t.k===tab)||TASK_TABS[0];
+  const rows=S.tasks.filter(tabDef.f);
   setView(`
   <div class="row g-3 mb-3">
-    ${kpiCard('Awaiting payment',money(r.rows.reduce((a,e)=>a+Number(e.Amount||0),0)),r.total+' claims','hourglass','#B45309','#FFF7E6')}
-    ${kpiCard('Recently paid',money(paid.rows.reduce((a,e)=>a+Number(e.Amount||0),0)),'Last 10','cash-coin','#166534','#DCFCE7')}
+    ${kpiCard('Waiting on you',c.pending+c.clearance+c.payment,'tasks','inbox','#1D4ED8','#EEF3FF')}
+    ${kpiCard('Total amount',money(c.totalAmount),'pending','cash-stack','#12336B','#EEF3FF')}
+    ${kpiCard('Urgent',c.urgent,'due within 6h','lightning','#B45309','#FFF7E6')}
+    ${kpiCard('Overdue',c.overdue,'past due','exclamation-triangle','#B91C1C','#FEF2F2')}
   </div>
-  <div class="card-x mb-3"><div class="p-3 border-bottom fw-bold">Approved — awaiting payment</div>
-    ${r.rows.length? r.rows.map(rowLine).join('') : emptyBox('No payments due','Approved claims will queue here.')}</div>
-  <div class="card-x"><div class="p-3 border-bottom fw-bold">Recently paid</div>
-    ${paid.rows.length? paid.rows.map(rowLine).join('') : emptyBox('No payments recorded yet','')}</div>`);
+  <ul class="nav nav-pills gap-1 mb-3 flex-nowrap overflow-auto pb-1">
+    ${TASK_TABS.map(t=>{
+      const n=S.tasks.filter(t.f).length;
+      return `<li class="nav-item"><a class="nav-link ${tab===t.k?'active':''} py-1 px-3"
+        style="${tab===t.k?'background:var(--accent)':'color:#475569'}" href="#"
+        onclick="renderTasks('${t.k}');return false">${esc(t.t)}${n?` <span class="badge rounded-pill ${tab===t.k?'text-bg-light':'text-bg-secondary'}">${n}</span>`:''}</a></li>`;
+    }).join('')}
+  </ul>
+  <div class="row g-3">
+    ${rows.length? rows.map(taskCard).join('') :
+      `<div class="col-12"><div class="card-x">${emptyBox('Nothing here','Tasks assigned to you appear in this inbox.')}</div></div>`}
+  </div>`);
+}
+
+function taskCard(t){
+  const flag = t.overdue?`<span class="badge-st st-rejected">Overdue</span>`
+             : t.urgent?`<span class="badge-st st-pending">Urgent</span>`:'';
+  const icon = t.TaskType==='CLEARANCE'?'patch-check':t.TaskType==='PAYMENT'?'cash-coin':'check2-square';
+  const open = t.Status==='Pending';
+  return `<div class="col-12 col-lg-6"><div class="card-x p-3 h-100"
+      style="${t.overdue?'border-color:#FECACA':''}">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <div class="d-flex gap-2 align-items-center">
+        <div class="cat-ic" style="width:34px;height:34px;font-size:15px"><i class="bi bi-${icon}"></i></div>
+        <div><div class="fw-bold">${esc(t.ExpenseID)}</div>
+          <div class="small text-muted-2">${esc(t.StepName)}</div></div>
+      </div>
+      <div class="text-end">${flag}
+        <div class="money mt-1">${money(t.Amount)}</div></div>
+    </div>
+    <div class="small text-muted-2 mb-2">
+      ${esc(t.EmployeeName||'—')} · ${esc(t.Category||'—')} · ${dshort(t.ExpenseDate)}
+      ${t.Description?'<br>'+esc(t.Description):''}
+    </div>
+    <div class="d-flex justify-content-between align-items-center small text-muted-2 mb-3">
+      <span><i class="bi bi-clock me-1"></i>Waiting ${t.waitingHours}h</span>
+      ${t.ReceiptFileID?'<span><i class="bi bi-receipt me-1"></i>Receipt attached</span>':'<span class="text-warning-emphasis">No receipt</span>'}
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-sm btn-soft" onclick="openExpense('${t.ExpenseID}')">Review</button>
+      ${open&&t.TaskType==='APPROVAL'?`
+        <button class="btn btn-sm btn-outline-danger" onclick="taskAction('${t.TaskID}','reject')">Reject</button>
+        <button class="btn btn-sm btn-success ms-auto" onclick="taskAction('${t.TaskID}','approve')">Approve</button>`:''}
+      ${open&&t.TaskType==='CLEARANCE'?`
+        <button class="btn btn-sm btn-success ms-auto" onclick="taskAction('${t.TaskID}','clear')">Confirm &amp; clear</button>`:''}
+      ${open&&t.TaskType==='PAYMENT'?`
+        <button class="btn btn-sm btn-accent ms-auto" onclick="taskAction('${t.TaskID}','pay')">Record payment</button>`:''}
+      ${!open?`<span class="badge-st ${stClass(t.Status==='Approved'?'APPROVED':t.Status==='Rejected'?'REJECTED':t.Status==='Returned'?'RETURNED':'CLEARED')} ms-auto">${esc(t.Status)}</span>`:''}
+    </div>
+  </div></div>`;
+}
+
+async function taskAction(taskId, what){
+  const t=(S.tasks||[]).find(x=>x.TaskID===taskId);
+  const d=await api('getExpenseDetails',{ExpenseID:t.ExpenseID});
+  if(!d.ok) return toast(d.message,'danger');
+  const task=d.myTask||t, e=d.expense;
+  if(what==='approve') approveDlg(task,e);
+  else if(what==='reject') rejectDlg(task,e);
+  else if(what==='clear') clearDlg(task,e);
+  else if(what==='pay') payDlg(task,e);
+  else if(what==='sendback') sendBackDlg(task);
+  else if(what==='clarify') clarifyDlg(task);
+  else if(what==='reassign') reassignDlg(task);
+}
+
+/* ================================ CLEARANCE CENTRE ================================ */
+async function vClearance(){
+  loading();
+  const r=await api('getMyTasks');
+  if(!r.ok) return setView(alertBox(r.message));
+  S.tasks=r.rows;
+  const rows=r.rows.filter(x=>x.TaskType==='CLEARANCE');
+  const pend=rows.filter(x=>x.Status==='Pending');
+  setView(`
+  <div class="row g-3 mb-3">
+    ${kpiCard('Awaiting clearance',pend.length,'assigned to you','patch-check','#0F7B4F','#ECFDF3')}
+    ${kpiCard('Value',money(pend.reduce((a,x)=>a+x.Amount,0)),'approved amount','cash-stack','#12336B','#EEF3FF')}
+    ${kpiCard('Cleared by you',rows.filter(x=>x.Status==='Cleared').length,'all time','check-all','#166534','#DCFCE7')}
+  </div>
+  <div class="alert alert-info py-2 px-3 small"><i class="bi bi-info-circle me-1"></i>
+    Clearance is the final confirmation. Check the approved amount against the receipt before clearing.</div>
+  <div class="row g-3">
+    ${pend.length? pend.map(taskCard).join('') :
+      `<div class="col-12"><div class="card-x">${emptyBox('Nothing to clear','Approved expenses assigned to you appear here.')}</div></div>`}
+  </div>
+  ${rows.filter(x=>x.Status==='Cleared').length?`<h6 class="mt-4 mb-2">Recently cleared</h6>
+    <div class="row g-3">${rows.filter(x=>x.Status==='Cleared').slice(0,6).map(taskCard).join('')}</div>`:''}`);
+}
+
+/* ================================ PAYMENT CENTRE ================================ */
+async function vPayments(){
+  loading();
+  const r=await api('getMyTasks');
+  if(!r.ok) return setView(alertBox(r.message));
+  S.tasks=r.rows;
+  const rows=r.rows.filter(x=>x.TaskType==='PAYMENT');
+  const pend=rows.filter(x=>x.Status==='Pending');
+  const paid=rows.filter(x=>x.Status==='Paid');
+  setView(`
+  <div class="row g-3 mb-3">
+    ${kpiCard('Awaiting payment',pend.length,'cleared claims','hourglass','#B45309','#FFF7E6')}
+    ${kpiCard('Amount due',money(pend.reduce((a,x)=>a+x.Amount,0)),'to release','cash-stack','#1D4ED8','#EEF3FF')}
+    ${kpiCard('Paid by you',paid.length,'all time','cash-coin','#166534','#DCFCE7')}
+  </div>
+  <div class="row g-3">
+    ${pend.length? pend.map(taskCard).join('') :
+      `<div class="col-12"><div class="card-x">${emptyBox('No payments due','Cleared claims queue here.')}</div></div>`}
+  </div>
+  ${paid.length?`<h6 class="mt-4 mb-2">Recently paid</h6>
+    <div class="row g-3">${paid.slice(0,6).map(taskCard).join('')}</div>`:''}`);
+}
+
+/* ================================ ADMIN MONITOR ================================ */
+async function vMonitor(){
+  loading();
+  const r=await api('getApprovalMonitor');
+  if(!r.ok) return setView(alertBox(r.message));
+  const k=r.kpi;
+  setView(`
+  <div class="row g-3 mb-3">
+    ${kpiCard('Pending approval',k.pendingApproval,'tasks','check2-square','#1D4ED8','#EEF3FF')}
+    ${kpiCard('Pending clearance',k.pendingClearance,'tasks','patch-check','#0F7B4F','#ECFDF3')}
+    ${kpiCard('Pending payment',k.pendingPayment,'tasks','cash-coin','#B45309','#FFF7E6')}
+    ${kpiCard('Overdue',k.overdue,'past SLA','exclamation-triangle','#B91C1C','#FEF2F2')}
+    ${kpiCard('Rejected',k.rejected,'expenses','x-octagon','#B91C1C','#FEF2F2')}
+    ${kpiCard('Cleared today',k.clearedToday,'today','check-all','#166534','#DCFCE7')}
+  </div>
+  <div class="card-x">
+    <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+      <div><div class="fw-bold">Live queue — ${money(k.pendingAmount)} in flight</div>
+        <div class="small text-muted-2">Oldest due date first</div></div>
+      <button class="btn btn-sm btn-soft" onclick="vMonitor()"><i class="bi bi-arrow-clockwise"></i></button>
+    </div>
+    <div class="table-responsive"><table class="table table-x">
+      <thead><tr><th>Expense</th><th>Step</th><th>Assigned to</th><th>Created by</th>
+        <th class="text-end">Amount</th><th>Due</th></tr></thead>
+      <tbody>${r.queue.map(t=>`<tr onclick="openExpense('${t.ExpenseID}')">
+        <td class="fw-semibold">${esc(t.ExpenseID)}</td>
+        <td><span class="badge-st st-draft">${esc(t.StepName)}</span></td>
+        <td>${esc(t.AssignedToName||'—')}</td><td>${esc(t.EmployeeName||'—')}</td>
+        <td class="text-end money">${money(t.Amount)}</td>
+        <td>${t.overdue?`<span class="badge-st st-rejected">Overdue</span>`:`<span class="small text-muted-2">${dtime(t.DueDate)}</span>`}</td>
+      </tr>`).join('')}</tbody></table></div>
+    ${r.queue.length?'':emptyBox('Queue is empty','Nothing is waiting anywhere in the workflow.')}
+  </div>`);
+}
+
+/* ================================ WORKFLOW BUILDER ================================ */
+async function vWorkflow(){
+  loading();
+  const r=await api('getWorkflow');
+  if(!r.ok) return setView(alertBox(r.message));
+  S.wf=r;
+  const icon=t=>t==='CLEARANCE'?'patch-check':t==='PAYMENT'?'cash-coin':'check2-square';
+  setView(`
+  <div class="alert alert-info py-2 px-3 small"><i class="bi bi-diagram-3 me-1"></i>
+    Steps run in order. A step only applies when the claim amount falls inside its range, so you can
+    require extra sign-off on larger claims. No names are stored here — people are chosen at run time
+    from the assignment rule and the permission.</div>
+  <div class="card-x mb-3">
+    <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+      <div class="fw-bold">Approval steps</div>
+      <button class="btn btn-sm btn-accent" onclick="wfDlg()"><i class="bi bi-plus-lg me-1"></i>Add step</button>
+    </div>
+    <div class="table-responsive"><table class="table table-x">
+      <thead><tr><th>#</th><th>Step</th><th>Type</th><th>Assign to</th><th>Permission</th>
+        <th>Amount range</th><th>SLA</th><th>Active</th><th></th></tr></thead>
+      <tbody>${r.rows.map(s=>`<tr>
+        <td class="fw-bold">${esc(s.StepNumber)}</td>
+        <td><i class="bi bi-${icon(s.TaskType)} me-2" style="color:var(--accent)"></i>${esc(s.StepName)}</td>
+        <td><span class="badge-st st-draft">${esc(s.TaskType)}</span></td>
+        <td class="small">${esc(s.AutoAssign)}</td>
+        <td class="small text-muted-2">${esc(s.RequiredPermission)}</td>
+        <td class="small">${money(s.AmountFrom)} – ${Number(s.AmountTo)>=999999999?'no limit':money(s.AmountTo)}</td>
+        <td class="small">${esc(s.SlaHours)}h</td>
+        <td><span class="badge-st ${String(s.Active)==='true'?'st-approved':'st-cancel'}">${String(s.Active)==='true'?'On':'Off'}</span></td>
+        <td class="text-end"><div class="btn-group btn-group-sm">
+          <button class="btn btn-light" onclick='wfDlg(${JSON.stringify(s).replace(/'/g,"&#39;")})'><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-light text-danger" onclick="wfDel('${esc(s.WorkflowID)}',${s.StepNumber})"><i class="bi bi-trash"></i></button>
+        </div></td></tr>`).join('')}</tbody></table></div>
+    ${r.rows.length?'':emptyBox('No steps configured','Claims will be approved automatically until you add a step.')}
+  </div>
+  <div class="card-x p-3">
+    <div class="fw-bold mb-3">Flow preview</div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span class="badge-st st-draft">Expense created</span>
+      ${r.rows.filter(s=>String(s.Active)==='true').map(s=>`<i class="bi bi-arrow-right text-muted-2"></i>
+        <span class="badge-st ${s.TaskType==='PAYMENT'?'st-paid':s.TaskType==='CLEARANCE'?'st-approved':'st-pending'}">${esc(s.StepName)}</span>`).join('')}
+      <i class="bi bi-arrow-right text-muted-2"></i><span class="badge-st st-paid">Closed</span>
+    </div>
+  </div>`);
+}
+
+function wfDlg(s){
+  const w=S.wf, e=s||{};
+  formModal(s?'Edit step':'Add step',`
+    <div class="row g-3">
+      <div class="col-4"><label class="form-label small fw-semibold">Step number *</label>
+        <input id="wfNum" type="number" class="form-control" value="${esc(e.StepNumber||'')}" ${s?'readonly':''}></div>
+      <div class="col-8"><label class="form-label small fw-semibold">Step name *</label>
+        <input id="wfName" class="form-control" value="${esc(e.StepName||'')}" placeholder="e.g. Department Head Approval"></div>
+      <div class="col-6"><label class="form-label small fw-semibold">Type</label>
+        <select id="wfType" class="form-select">${['APPROVAL','CLEARANCE','PAYMENT'].map(t=>`<option ${e.TaskType===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="col-6"><label class="form-label small fw-semibold">Assign to</label>
+        <select id="wfAssign" class="form-select">${w.assignRules.map(t=>`<option ${e.AutoAssign===t?'selected':''}>${t}</option>`).join('')}</select>
+        <div class="form-text">MANAGER = the creator's manager. CREATOR = back to the person who raised it.</div></div>
+      <div class="col-12"><label class="form-label small fw-semibold">Required permission *</label>
+        <select id="wfPerm" class="form-select">${w.permissions.map(t=>`<option ${e.RequiredPermission===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="col-6"><label class="form-label small fw-semibold">Amount from</label>
+        <input id="wfFrom" type="number" class="form-control" value="${esc(e.AmountFrom||0)}"></div>
+      <div class="col-6"><label class="form-label small fw-semibold">Amount to</label>
+        <input id="wfTo" type="number" class="form-control" value="${esc(e.AmountTo||999999999)}"></div>
+      <div class="col-6"><label class="form-label small fw-semibold">SLA (hours)</label>
+        <input id="wfSla" type="number" class="form-control" value="${esc(e.SlaHours||24)}"></div>
+      <div class="col-6"><label class="form-label small fw-semibold">Restrict to role</label>
+        <select id="wfRole" class="form-select"><option value="">Any role</option>
+          ${w.roles.map(t=>`<option ${e.RequiredRole===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="col-12"><div class="form-check">
+        <input class="form-check-input" type="checkbox" id="wfActive" ${String(e.Active)!=='false'?'checked':''}>
+        <label class="form-check-label small" for="wfActive">Step is active</label></div></div>
+    </div>`,
+    async()=>{
+      const row={ WorkflowID:e.WorkflowID||'WF-001', StepNumber:val('wfNum'), StepName:val('wfName'),
+        TaskType:val('wfType'), AutoAssign:val('wfAssign'), RequiredPermission:val('wfPerm'),
+        RequiredRole:val('wfRole'), AmountFrom:val('wfFrom'), AmountTo:val('wfTo'),
+        SlaHours:val('wfSla'), Active:document.getElementById('wfActive').checked };
+      if(!row.StepName){ toast('Give the step a name.','warn'); return false; }
+      const r=await api('saveWorkflowStep',{row});
+      if(!r.ok){ toast(r.message,'danger'); return false; }
+      toast('Step saved.'); vWorkflow(); return true;
+    }, s?'Save step':'Add step');
+}
+async function wfDel(id,num){
+  if(!confirm('Delete step '+num+'? Claims already in flight are not affected.')) return;
+  const r=await api('deleteWorkflowStep',{WorkflowID:id,StepNumber:num});
+  if(!r.ok) return toast(r.message,'danger');
+  toast('Step deleted.'); vWorkflow();
 }
 
 /* ================================ REPORTS + EXPORT ================================ */
@@ -1277,7 +1739,7 @@ async function runReport(){
         <tbody>${r.rows.slice(0,500).map(x=>`<tr>${cols.map(c=>
           `<td>${c[0]==='Amount'?`<span class="money">${money(x.Amount)}</span>`:
             c[0]==='ExpenseDate'?dshort(x[c[0]]):
-            c[0]==='Status'?`<span class="badge-st ${stClass(x.Status)}">${esc(x.Status)}</span>`:esc(x[c[0]]||'—')}</td>`).join('')}</tr>`).join('')}
+            c[0]==='Status'?`<span class="badge-st ${stClass(x.Status)}">${esc(stLabel(x.Status))}</span>`:esc(x[c[0]]||'—')}</td>`).join('')}</tr>`).join('')}
         </tbody></table></div>
       ${r.rows.length>500?'<div class="p-3 small text-muted-2">Showing the first 500 rows. Export to see everything.</div>':''}
       ${r.rows.length?'':emptyBox('No records match these filters','')}
@@ -1420,14 +1882,14 @@ function userDlg(u){
       <div class="col-6"><label class="form-label small fw-semibold">Branch</label>
         <select id="uBr" class="form-select">${(m.branches||[]).map(b=>`<option ${e.Branch===b.BranchName?'selected':''}>${esc(b.BranchName)}</option>`).join('')}</select></div>
       <div class="col-12"><div class="form-check">
-        <input class="form-check-input" type="checkbox" id="uPersonal" ${String(e.ExtraPerms||'').includes('VIEW_PERSONAL_EXPENSES')?'checked':''}>
+        <input class="form-check-input" type="checkbox" id="uPersonal" ${String(e.ExtraPerms||'').includes('EXPENSE_VIEW_PERSONAL')?'checked':''}>
         <label class="form-check-label small" for="uPersonal">Allow this user to view other people's personal expenses</label>
         <div class="form-text">Off by default. Only grant this where policy requires it.</div></div></div>
     </div>`,
     async()=>{
       const body={ UserID:e.UserID, Name:val('uName'), Username:val('uUser'), Email:val('uMail'),
         EmployeeID:val('uEmp'), Role:val('uRole'), ManagerID:val('uMgr'), Department:val('uDep'),
-        Branch:val('uBr'), ExtraPerms: document.getElementById('uPersonal').checked?'VIEW_PERSONAL_EXPENSES':'' };
+        Branch:val('uBr'), ExtraPerms: document.getElementById('uPersonal').checked?'EXPENSE_VIEW_PERSONAL':'' };
       if(!u) body.Password=val('uPass');
       const r=await api(u?'updateUser':'createUser',body);
       if(!r.ok){ toast(r.message,'danger'); return false; }
@@ -1645,7 +2107,7 @@ function vHelp(){
         <span class="badge-st st-cancel">Cancelled — withdrawn</span>
       </div>
     </div>
-    <div class="text-center small text-muted-2 mt-4">Expense Management · version 1.1</div>
+    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.0</div>
   </div>`);
 }
 

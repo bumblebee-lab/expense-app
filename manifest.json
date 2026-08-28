@@ -1,0 +1,40 @@
+{
+  "name": "Expense Management",
+  "short_name": "Expense",
+  "description": "Company expense claims with approval workflow, plus private personal expense tracking.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12336B",
+  "theme_color": "#12336B",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add company expense",
+      "short_name": "New claim",
+      "url": "./index.html?go=add"
+    },
+    {
+      "name": "Approval centre",
+      "short_name": "Approvals",
+      "url": "./index.html?go=approvals"
+    }
+  ]
+}

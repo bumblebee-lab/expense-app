@@ -3,7 +3,7 @@
  * It deliberately never caches API responses: expense data must always be live,
  * and a stale approval status is worse than no status at all.
  */
-const CACHE = 'expense-shell-v2';
+const CACHE = 'expense-shell-v4';
 
 const SHELL = [
   './',
@@ -68,4 +68,32 @@ self.addEventListener('fetch', event => {
         .catch(() => caches.match('./index.html'));
     })
   );
+});
+
+/* ---- Notifications ----
+ * Tapping an alert should focus the tab that is already open rather than
+ * opening a second copy of the app.
+ */
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if ('focus' in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow('./index.html');
+    })
+  );
+});
+
+/* Push is wired up for later. Nothing sends push messages today — alerts are
+ * raised by the page itself while it is open — but this keeps the door open
+ * without needing another service worker version. */
+self.addEventListener('push', event => {
+  let data = { title: 'Expense Management', body: 'You have a new notification.' };
+  try { if (event.data) data = event.data.json(); } catch (e) {}
+  event.waitUntil(self.registration.showNotification(data.title, {
+    body: data.body, icon: './logo.svg', badge: './logo.svg',
+    tag: data.tag || 'expense', vibrate: [80, 40, 80]
+  }));
 });

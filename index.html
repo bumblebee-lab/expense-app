@@ -1,10 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#12336B">
+<meta name="theme-color" content="#1E3A8A">
 <title>Expense Management</title>
+<script>
+  // Applied before first paint so the page never flashes the wrong theme.
+  (function(){ try{
+    var t = JSON.parse(localStorage.getItem('em_theme'));
+    if(!t || t==='auto') t = matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){} })();
+</script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
@@ -19,129 +27,285 @@
 <style>
 /* ============================ DESIGN TOKENS ============================ */
 :root{
-  --navy:#12336B; --navy-700:#0D2650; --blue:#1D4ED8; --blue-50:#EEF3FF;
-  --green:#0F7B4F; --green-600:#16A34A; --green-50:#ECFDF3;
-  --amber:#D97706; --amber-50:#FFF7E6; --red:#DC2626; --red-50:#FEF2F2;
-  --slate:#64748B; --line:#E4E9F2; --bg:#F4F7FC; --card:#FFFFFF; --ink:#0F172A;
-  --accent:var(--navy); --accent-soft:var(--blue-50); --accent-2:var(--blue);
-  --r:14px; --shadow:0 1px 2px rgba(15,23,42,.05),0 8px 24px rgba(15,23,42,.06);
+  --navy:#1E3A8A; --navy-2:#12266B; --ink:#0F172A; --blue:#2563EB; --blue-50:#EFF6FF;
+  --teal:#10B981; --teal-2:#059669; --teal-50:#ECFDF5;
+  --amber:#F59E0B; --amber-50:#FFFBEB; --red:#EF4444; --red-50:#FEF2F2;
+  --purple:#6366F1; --purple-50:#EEF2FF; --cyan:#0EA5E9; --cyan-50:#F0F9FF;
+  --slate:#64748B; --muted:#94A3B8;
+  --bg:#F1F5F9; --bg-2:#E8EEF6; --card:#FFFFFF; --line:#E2E8F0; --line-2:#F1F5F9;
+  --text:#0F172A; --text-2:#475569;
+  --accent:var(--navy); --accent-2:var(--blue); --accent-soft:var(--blue-50);
+  --accent-grad:linear-gradient(135deg,#2563EB 0%,#1E3A8A 100%);
+  --side-grad:linear-gradient(180deg,#1E3A8A 0%,#12266B 100%);
+  --r:16px; --r-sm:11px;
+  --sh-1:0 1px 2px rgba(11,18,32,.04);
+  --sh-2:0 2px 4px rgba(11,18,32,.04),0 12px 28px -8px rgba(11,18,32,.10);
+  --sh-3:0 8px 30px -10px rgba(37,99,235,.35);
+  --sh-in:inset 0 1px 0 rgba(255,255,255,.6);
+  --t:180ms cubic-bezier(.4,0,.2,1);
 }
-body.mode-personal{ --accent:var(--green); --accent-soft:var(--green-50); --accent-2:var(--green-600); }
+body.mode-personal{
+  --accent:var(--teal-2); --accent-2:var(--teal); --accent-soft:var(--teal-50);
+  --accent-grad:linear-gradient(135deg,#10B981 0%,#047857 100%);
+  --side-grad:linear-gradient(180deg,#047857 0%,#064E3B 100%);
+  --sh-3:0 8px 40px -12px rgba(16,185,129,.30);
+}
+/* -------- dark theme -------- */
+html[data-theme="dark"]{
+  --bg:#0B1120; --bg-2:#111B2E; --card:#151F35; --line:#25344F; --line-2:#1A2540;
+  --text:#E6EDF8; --text-2:#A5B4CC; --slate:#8FA0BC; --muted:#6E7F9C;
+  --blue-50:#16294F; --teal-50:#0F3229; --amber-50:#352910; --red-50:#3B1B1E;
+  --purple-50:#1F2147; --cyan-50:#0D2A44;
+  --side-grad:linear-gradient(180deg,#131E3B 0%,#0C1428 100%);
+  --sh-1:0 1px 2px rgba(0,0,0,.4);
+  --sh-2:0 2px 4px rgba(0,0,0,.3),0 12px 28px -8px rgba(0,0,0,.5);
+  --sh-in:inset 0 1px 0 rgba(255,255,255,.04);
+}
+html[data-theme="dark"] body.mode-personal{--side-grad:linear-gradient(180deg,#0D3A2C 0%,#07261D 100%)}
+html[data-theme="dark"] body{background:var(--bg);color:var(--text)}
+html[data-theme="dark"] .table-x thead th{background:var(--line-2);color:var(--slate)}
+html[data-theme="dark"] .table-x tbody tr:hover{background:rgba(79,70,229,.08)}
+html[data-theme="dark"] .form-control,html[data-theme="dark"] .form-select,
+html[data-theme="dark"] .input-group-text{
+  background:var(--bg-2);border-color:var(--line);color:var(--text)}
+html[data-theme="dark"] .form-control::placeholder{color:var(--muted)}
+html[data-theme="dark"] .form-control:focus,html[data-theme="dark"] .form-select:focus{
+  background:var(--bg-2);color:var(--text);border-color:var(--accent-2)}
+html[data-theme="dark"] .modal-content,html[data-theme="dark"] .dropdown-menu{
+  background:var(--card);color:var(--text);border:1px solid var(--line)}
+html[data-theme="dark"] .dropdown-item{color:var(--text-2)}
+html[data-theme="dark"] .dropdown-item:hover{background:var(--line-2);color:var(--text)}
+html[data-theme="dark"] .btn-light{background:var(--line-2);border-color:var(--line);color:var(--text)}
+html[data-theme="dark"] .btn-light:hover{background:var(--line)}
+html[data-theme="dark"] .btn-close{filter:invert(1) grayscale(1) brightness(2)}
+html[data-theme="dark"] .modal-header,html[data-theme="dark"] .modal-footer{border-color:var(--line)}
+html[data-theme="dark"] .nav-pills .nav-link{color:var(--text-2)}
+html[data-theme="dark"] .progress{background:var(--line-2)}
+html[data-theme="dark"] .alert-success{background:var(--green-50);color:#6EE7B7;border-color:transparent}
+html[data-theme="dark"] .alert-info{background:var(--blue-50);color:#93C5FD;border-color:transparent}
+html[data-theme="dark"] .alert-warning{background:var(--amber-50);color:#FCD34D;border-color:transparent}
+html[data-theme="dark"] .alert-danger{background:var(--red-50);color:#FCA5A5;border-color:transparent}
+html[data-theme="dark"] .help-q{background:var(--card)}
+
 *{-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",sans-serif;font-size:14.5px}
+body{background:var(--bg);color:var(--text);font-size:14.5px;
+  font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;transition:background var(--t),color var(--t)}
 .hide{display:none!important}
-.card-x{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
-.text-muted-2{color:var(--slate)}
-h1,h2,h3,h4,h5{font-weight:700;letter-spacing:-.01em}
-.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn-accent:hover,.btn-accent:focus{background:var(--navy-700);border-color:var(--navy-700);color:#fff}
-body.mode-personal .btn-accent:hover{background:#0B5F3C;border-color:#0B5F3C}
-.btn-soft{background:var(--accent-soft);border:1px solid var(--line);color:var(--accent)}
+h1,h2,h3,h4,h5,h6{font-weight:700;letter-spacing:-.02em;color:var(--text)}
+.text-muted-2{color:var(--slate)!important}
 a{color:var(--accent-2);text-decoration:none}
-:focus-visible{outline:3px solid #93C5FD;outline-offset:2px}
+:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px;border:3px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);background-clip:content-box}
+
+.card-x{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--sh-1);transition:box-shadow var(--t),transform var(--t),border-color var(--t)}
+.card-x:hover{box-shadow:var(--sh-2)}
+.btn{border-radius:10px;font-weight:600;transition:transform var(--t),box-shadow var(--t),background var(--t)}
+.btn:active{transform:translateY(1px)}
+.btn-accent{background:var(--accent-grad);border:0;color:#fff;box-shadow:var(--sh-3)}
+.btn-accent:hover,.btn-accent:focus{color:#fff;filter:brightness(1.07);box-shadow:var(--sh-3)}
+.btn-soft{background:var(--accent-soft);border:1px solid transparent;color:var(--accent-2);font-weight:600}
+.btn-soft:hover{background:var(--accent-soft);filter:brightness(.97);color:var(--accent-2)}
+.form-control,.form-select{border-radius:10px;border-color:var(--line);padding:.55rem .8rem;
+  transition:border-color var(--t),box-shadow var(--t)}
+.form-control:focus,.form-select:focus{border-color:var(--accent-2);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent-2) 14%,transparent)}
+.form-label{color:var(--text-2)}
+.modal-content{border:1px solid var(--line);border-radius:20px;box-shadow:0 24px 70px -20px rgba(11,18,32,.4)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 /* ============================ LOGIN ============================ */
-#login{min-height:100dvh;display:grid;grid-template-columns:1fr}
-.login-brand{background:linear-gradient(160deg,#12336B 0%,#0D2650 55%,#0A1C3C 100%);color:#fff;padding:48px 40px;display:none}
-.login-brand ul{list-style:none;padding:0;margin:26px 0 0}
-.login-brand li{padding:7px 0;color:#C7D6F5;font-size:14px}
-.login-brand li i{color:#4ADE80;margin-right:10px}
+#login{min-height:100dvh;display:grid;grid-template-columns:1fr;background:var(--bg)}
+.login-brand{position:relative;overflow:hidden;color:#fff;padding:52px 44px;display:none;
+  background:radial-gradient(1200px 600px at 10% -10%,#2563EB 0%,transparent 55%),
+             radial-gradient(900px 500px at 90% 110%,#10B981 0%,transparent 50%),
+             linear-gradient(160deg,#1E3A8A 0%,#0C1A42 100%)}
+.login-brand:before{content:"";position:absolute;inset:0;
+  background-image:radial-gradient(rgba(255,255,255,.09) 1px,transparent 1px);
+  background-size:26px 26px;mask-image:linear-gradient(180deg,#000,transparent 75%)}
+.login-brand>*{position:relative}
+.login-brand ul{list-style:none;padding:0;margin:30px 0 0}
+.login-brand li{padding:8px 0;color:#C3CFE8;font-size:14px;display:flex;gap:11px;align-items:center}
+.login-brand li i{color:#34D399;font-size:16px}
 .login-panel{display:flex;align-items:center;justify-content:center;padding:28px 20px}
-.login-box{width:100%;max-width:390px}
+.login-box{width:100%;max-width:392px}
 @media(min-width:992px){#login{grid-template-columns:1.05fr .95fr}.login-brand{display:block}}
-.logo-mark{width:52px;height:52px;border-radius:15px;background:linear-gradient(140deg,#1D4ED8,#12336B);
-  display:grid;place-items:center;color:#fff;font-size:24px;box-shadow:0 8px 20px rgba(18,51,107,.28)}
-.wordmark{font-weight:800;letter-spacing:.14em;font-size:13px;line-height:1.35}
+.stat-chip{display:inline-flex;flex-direction:column;padding:12px 16px;border-radius:14px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px)}
+.stat-chip b{font-size:19px;letter-spacing:-.02em}
+.stat-chip span{font-size:11px;color:#A9B8D6;letter-spacing:.04em;text-transform:uppercase}
+
+.logo-mark{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;
+  background:var(--accent-grad);box-shadow:var(--sh-3);flex:none}
+.logo-mark svg{width:30px;height:30px}
+.wordmark{font-weight:800;letter-spacing:.16em;font-size:13px;line-height:1.4;color:var(--text)}
+.wordmark small{display:block;font-weight:600;font-size:11px;letter-spacing:.2em;color:var(--teal-2)}
+.tagline{font-weight:500;font-size:9.5px;letter-spacing:.06em;color:var(--slate);margin-top:3px}
+#splash .sp-tag{font-size:10px;letter-spacing:.18em;color:#93AEDF;font-weight:500}
 
 /* ============================ SHELL ============================ */
-.sidebar{position:fixed;inset:0 auto 0 0;width:250px;background:#fff;border-right:1px solid var(--line);
-  padding:16px 12px;overflow-y:auto;z-index:1040}
-.sidebar .nav-link{color:#334155;border-radius:10px;padding:9px 12px;font-weight:500;display:flex;gap:11px;align-items:center}
-.sidebar .nav-link i{width:19px;text-align:center;font-size:16px;color:var(--slate)}
-.sidebar .nav-link.active{background:var(--accent-soft);color:var(--accent);font-weight:650}
-.sidebar .nav-link.active i{color:var(--accent)}
-.sidebar .nav-sec{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#94A3B8;margin:16px 12px 6px;font-weight:700}
-.topbar{position:sticky;top:0;z-index:1030;background:#fff;border-bottom:1px solid var(--line);padding:10px 16px}
-.main{padding:18px 16px 100px}
-@media(min-width:992px){.main{margin-left:250px;padding:22px 26px 40px}.topbar{margin-left:250px}}
-@media(max-width:991.98px){.sidebar{transform:translateX(-100%);transition:transform .2s}.sidebar.open{transform:none}
-  .backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1035}}
+.sidebar{position:fixed;inset:0 auto 0 0;width:256px;background:var(--side-grad);
+  padding:18px 14px;overflow-y:auto;z-index:1040;color:#fff}
+.sidebar .wordmark{color:#fff}
+.sidebar .wordmark small{color:#6EE7B7}
+.sidebar .nav-link{color:#C3D3F0;border-radius:11px;padding:10px 12px;font-weight:500;
+  display:flex;gap:12px;align-items:center;position:relative;transition:all var(--t)}
+.sidebar .nav-link i{width:19px;text-align:center;font-size:16px;color:#8FAAE0;transition:color var(--t)}
+.sidebar .nav-link:hover{background:rgba(255,255,255,.09);color:#fff}
+.sidebar .nav-link:hover i{color:#fff}
+.sidebar .nav-link.active{background:#fff;color:var(--navy);font-weight:700;box-shadow:var(--sh-1)}
+.sidebar .nav-link.active i{color:var(--blue)}
+body.mode-personal .sidebar .nav-link.active{color:#065F46}
+body.mode-personal .sidebar .nav-link.active i{color:var(--teal-2)}
+.sidebar .nav-sec{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#7E9AD4;
+  margin:18px 12px 7px;font-weight:700}
+.sidebar .mode-toggle{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.14)}
+.sidebar .mode-toggle button{color:#B9CBEC}
+.sidebar .mode-toggle button.on{background:#fff;color:var(--navy)}
+.sidebar .border-top{border-color:rgba(255,255,255,.14)!important}
+.sidebar #sbName{color:#fff}
+.sidebar #sbRole{color:#93AEDF}
+.side-user{display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;
+  background:rgba(255,255,255,.08)}
+.side-av{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;
+  min-width:18px;height:18px;border-radius:9px;display:grid;place-items:center;padding:0 5px}
+.topbar{position:sticky;top:0;z-index:1030;background:color-mix(in srgb,var(--card) 82%,transparent);
+  backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line);padding:11px 16px}
+.main{padding:20px 16px 108px}
+@media(min-width:992px){.main{margin-left:256px;padding:24px 28px 48px}.topbar{margin-left:256px}}
+@media(max-width:991.98px){.sidebar{transform:translateX(-100%);transition:transform var(--t);box-shadow:var(--sh-2)}
+  .sidebar.open{transform:none}
+  .backdrop{position:fixed;inset:0;background:rgba(6,10,20,.5);backdrop-filter:blur(2px);z-index:1035}}
 
-/* mode toggle */
-.mode-toggle{display:flex;background:#EEF2F8;border-radius:11px;padding:4px;gap:4px}
-.mode-toggle button{flex:1;border:0;background:transparent;border-radius:8px;padding:7px 8px;font-size:12.5px;
-  font-weight:700;letter-spacing:.04em;color:#64748B}
-.mode-toggle button.on{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(15,23,42,.14)}
+.mode-toggle{display:flex;background:var(--bg-2);border-radius:12px;padding:4px;gap:4px;
+  border:1px solid var(--line)}
+.mode-toggle button{flex:1;border:0;background:transparent;border-radius:9px;padding:7px 8px;
+  font-size:12px;font-weight:700;letter-spacing:.05em;color:var(--slate);transition:all var(--t)}
+.mode-toggle button.on{background:var(--card);color:var(--accent-2);box-shadow:var(--sh-1)}
+
+.icon-btn{width:36px;height:36px;border-radius:11px;border:1px solid var(--line);background:var(--card);
+  color:var(--text-2);display:grid;place-items:center;transition:all var(--t);position:relative}
+.icon-btn:hover{background:var(--line-2);color:var(--text)}
 
 /* KPI */
-.kpi{padding:16px}
-.kpi .lbl{font-size:12px;color:var(--slate);font-weight:600;letter-spacing:.02em}
-.kpi .val{font-size:21px;font-weight:800;margin-top:4px;letter-spacing:-.02em}
-.kpi .sub{font-size:11.5px;color:#94A3B8;margin-top:2px}
-.kpi-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:17px}
+.kpi{padding:17px}
+.kpi .lbl{font-size:11.5px;color:var(--slate);font-weight:650;letter-spacing:.02em}
+.kpi .val{font-size:22px;font-weight:800;margin-top:5px;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;color:var(--text)}
+.kpi .sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+.kpi-ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:15px;flex:none}
+.qa-btn{display:flex;flex-direction:column;align-items:center;gap:7px;padding:15px 8px;border-radius:14px;
+  background:var(--card);border:1px solid var(--line);color:var(--text-2);font-size:11.5px;
+  font-weight:600;text-align:center;transition:all var(--t);width:100%}
+.qa-btn:hover{border-color:var(--accent-2);color:var(--accent-2);transform:translateY(-2px);box-shadow:var(--sh-2)}
+.qa-btn i{font-size:20px;color:var(--accent-2)}
+.qa-btn .qa-n{position:absolute;top:8px;right:14px;background:var(--red);color:#fff;font-size:9.5px;
+  font-weight:700;min-width:17px;height:17px;border-radius:9px;display:grid;place-items:center;padding:0 4px}
+.card-x.kpi{position:relative;overflow:hidden}
+.card-x.kpi:before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--accent-grad);
+  opacity:0;transition:opacity var(--t)}
+.card-x.kpi:hover:before{opacity:1}
+.card-x.kpi:hover{transform:translateY(-2px)}
+
+.hero{position:relative;overflow:hidden;border:0;color:#fff;
+  background:radial-gradient(700px 300px at 90% -30%,rgba(255,255,255,.22),transparent 60%),var(--accent-grad)}
+.hero:before{content:"";position:absolute;inset:0;
+  background-image:radial-gradient(rgba(255,255,255,.1) 1px,transparent 1px);background-size:22px 22px}
+.hero>*{position:relative}
 
 /* badges */
-.badge-st{font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px;letter-spacing:.01em;white-space:nowrap}
+.badge-st{font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:999px;
+  letter-spacing:.01em;white-space:nowrap;display:inline-block}
 .st-pending{background:var(--amber-50);color:#B45309}
-.st-approved{background:var(--green-50);color:#15803D}
+.st-approved{background:var(--teal-50);color:#047857}
+.st-cleared{background:var(--cyan-50);color:#0369A1}
 .st-rejected{background:var(--red-50);color:#B91C1C}
-.st-paid{background:#DCFCE7;color:#166534}
-.st-draft{background:#F1F5F9;color:#475569}
-.st-cancel{background:#E2E8F0;color:#334155}
+.st-returned{background:var(--purple-50);color:#4338CA}
+.st-paid{background:var(--blue-50);color:#1D4ED8}
+.st-draft{background:var(--line-2);color:var(--slate)}
+.st-cancel{background:var(--line);color:var(--slate)}
+html[data-theme="dark"] .st-pending{color:#FBBF24}
+html[data-theme="dark"] .st-approved{color:#6EE7B7}
+html[data-theme="dark"] .st-cleared{color:#7DD3FC}
+html[data-theme="dark"] .st-rejected{color:#FCA5A5}
+html[data-theme="dark"] .st-returned{color:#A5B4FC}
+html[data-theme="dark"] .st-paid{color:#93C5FD}
 
 /* tables & lists */
-.table-x{--bs-table-bg:transparent;margin:0}
-.table-x thead th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:#64748B;
-  background:#F8FAFC;border-bottom:1px solid var(--line);font-weight:700;padding:11px 14px;white-space:nowrap}
-.table-x tbody td{padding:12px 14px;border-bottom:1px solid #F1F5F9;vertical-align:middle}
-.table-x tbody tr:hover{background:#FAFCFF;cursor:pointer}
-.row-item{display:flex;gap:12px;align-items:center;padding:13px 14px;border-bottom:1px solid #F1F5F9}
+.table-x{--bs-table-bg:transparent;margin:0;color:var(--text)}
+.table-x thead th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);
+  background:var(--bg-2);border-bottom:1px solid var(--line);font-weight:700;padding:11px 15px;white-space:nowrap}
+.table-x tbody td{padding:13px 15px;border-bottom:1px solid var(--line-2);vertical-align:middle;color:var(--text)}
+.table-x tbody tr{transition:background var(--t)}
+.table-x tbody tr:hover{background:var(--accent-soft);cursor:pointer}
+.row-item{display:flex;gap:13px;align-items:center;padding:14px 15px;border-bottom:1px solid var(--line-2);
+  transition:background var(--t)}
+.row-item:hover{background:var(--line-2);cursor:pointer}
 .row-item:last-child{border-bottom:0}
-.cat-ic{width:40px;height:40px;border-radius:12px;background:var(--accent-soft);color:var(--accent);
+.cat-ic{width:40px;height:40px;border-radius:12px;background:var(--accent-soft);color:var(--accent-2);
   display:grid;place-items:center;font-size:17px;flex:none}
-.money{font-variant-numeric:tabular-nums;font-weight:700}
+.money{font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:-.01em}
 
 /* timeline */
-.tl{position:relative;padding-left:26px}
-.tl:before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--line)}
-.tl-item{position:relative;padding:0 0 18px}
-.tl-dot{position:absolute;left:-25px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;
-  border:2px solid var(--line);display:grid;place-items:center;font-size:9px;color:#94A3B8}
-.tl-item.done .tl-dot{border-color:var(--green-600);color:var(--green-600)}
-.tl-item.bad .tl-dot{border-color:var(--red);color:var(--red)}
-.tl-item.now .tl-dot{border-color:var(--amber);color:var(--amber)}
+.tl{position:relative;padding-left:28px}
+.tl:before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:2px;
+  background:linear-gradient(var(--line),var(--line-2))}
+.tl-item{position:relative;padding:0 0 19px}
+.tl-dot{position:absolute;left:-27px;top:2px;width:20px;height:20px;border-radius:50%;
+  background:var(--card);border:2px solid var(--line);display:grid;place-items:center;
+  font-size:9px;color:var(--muted)}
+.tl-item.done .tl-dot{border-color:var(--emerald);color:var(--emerald);background:var(--green-50)}
+.tl-item.bad .tl-dot{border-color:var(--red);color:var(--red);background:var(--red-50)}
+.tl-item.now .tl-dot{border-color:var(--amber);color:var(--amber);background:var(--amber-50);
+  animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(217,119,6,.35)}50%{box-shadow:0 0 0 6px rgba(217,119,6,0)}}
 
-/* bottom nav + fab */
-.bnav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);
-  display:flex;z-index:1032;padding-bottom:env(safe-area-inset-bottom)}
-.bnav a{flex:1;text-align:center;padding:8px 2px 7px;color:#94A3B8;font-size:10.5px;font-weight:600}
-.bnav a i{display:block;font-size:19px;margin-bottom:2px}
-.bnav a.active{color:var(--accent)}
+/* bottom nav */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:1032;display:flex;
+  background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:saturate(180%) blur(14px);
+  border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.bnav a{flex:1;text-align:center;padding:9px 2px 8px;color:var(--muted);font-size:10.5px;
+  font-weight:600;transition:color var(--t);position:relative}
+.bnav a i{display:block;font-size:19px;margin-bottom:3px}
+.bnav a.active{color:var(--accent-2)}
 .bnav .fab{margin-top:-22px}
-.bnav .fab i{background:var(--accent);color:#fff;width:46px;height:46px;border-radius:50%;
-  display:grid;place-items:center;margin:0 auto 3px;box-shadow:0 6px 16px rgba(18,51,107,.32);font-size:22px}
+.bnav .fab i{background:var(--accent-grad);color:#fff;width:48px;height:48px;border-radius:16px;
+  display:grid;place-items:center;margin:0 auto 3px;box-shadow:var(--sh-3);font-size:22px}
+.bnav .dot{position:absolute;top:6px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;
+  background:var(--red);border:2px solid var(--card)}
 @media(min-width:992px){.bnav{display:none}}
 
-.chart-wrap{position:relative;height:250px}
-.chart-sm{height:210px}
-.receipt-thumb{width:100%;max-height:420px;object-fit:contain;border-radius:12px;border:1px solid var(--line);background:#F8FAFC}
-.offline-bar{position:fixed;bottom:64px;left:12px;right:12px;z-index:1050;border-radius:11px;padding:9px 13px;font-size:12.5px;font-weight:600}
-@media(min-width:992px){.offline-bar{bottom:16px;left:auto;right:20px;width:320px}}
-.empty{padding:44px 18px;text-align:center;color:var(--slate)}
-.empty i{font-size:32px;color:#CBD5E1;display:block;margin-bottom:10px}
-@media print{.sidebar,.topbar,.bnav,.no-print{display:none!important}.main{margin:0;padding:0}}
+.chart-wrap{position:relative;height:252px}
+.chart-sm{height:212px}
+.receipt-thumb{width:100%;max-height:420px;object-fit:contain;border-radius:12px;
+  border:1px solid var(--line);background:var(--bg-2)}
+.offline-bar{position:fixed;bottom:72px;left:12px;right:12px;z-index:1050;border-radius:12px;
+  padding:10px 14px;font-size:12.5px;font-weight:600;box-shadow:var(--sh-2)}
+@media(min-width:992px){.offline-bar{bottom:18px;left:auto;right:22px;width:330px}}
+.empty{padding:46px 18px;text-align:center;color:var(--slate)}
+.empty i{font-size:34px;color:var(--line);display:block;margin-bottom:11px}
+.skel{background:linear-gradient(90deg,var(--line-2) 25%,var(--line) 37%,var(--line-2) 63%);
+  background-size:400% 100%;animation:sk 1.3s ease infinite;border-radius:8px}
+@keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+@media print{.sidebar,.topbar,.bnav,.no-print{display:none!important}.main{margin:0;padding:0}
+  body{background:#fff}}
 
 /* ============================ SPLASH ============================ */
-#splash{position:fixed;inset:0;z-index:3000;background:linear-gradient(160deg,#12336B 0%,#0D2650 60%,#0A1C3C 100%);
+#splash{position:fixed;inset:0;z-index:3000;
+  background:radial-gradient(700px 400px at 50% 15%,#2563EB 0%,transparent 62%),
+             linear-gradient(160deg,#1E3A8A 0%,#0E1E4D 100%);
   display:grid;place-content:center;justify-items:center;gap:18px;color:#fff;transition:opacity .35s}
 #splash.out{opacity:0;pointer-events:none}
 #splash .sp-mark{width:82px;height:82px;border-radius:24px;background:rgba(255,255,255,.1);
   border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:38px}
 #splash .sp-name{font-weight:800;letter-spacing:.2em;font-size:15px;text-align:center;line-height:1.7}
-#splash .sp-sub{color:#7DD3A8;font-weight:600;letter-spacing:.14em;font-size:11px}
+#splash .sp-sub{color:#34D399;font-weight:600;letter-spacing:.14em;font-size:11px}
 #splash .sp-bar{width:130px;height:3px;border-radius:3px;background:rgba(255,255,255,.16);overflow:hidden}
-#splash .sp-bar span{display:block;height:100%;width:40%;background:#4ADE80;border-radius:3px;animation:sp 1.1s infinite ease-in-out}
+#splash .sp-bar span{display:block;height:100%;width:40%;background:#34D399;border-radius:3px;animation:sp 1.1s infinite ease-in-out}
 @keyframes sp{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
 .help-q{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;background:#fff}
 .help-q summary{padding:13px 15px;font-weight:650;cursor:pointer;list-style:none}
@@ -155,8 +319,14 @@ a{color:var(--accent-2);text-decoration:none}
 
 <!-- ==================================================================== SPLASH -->
 <div id="splash">
-  <div class="sp-mark"><i class="bi bi-wallet2"></i></div>
-  <div class="sp-name">EXPENSE<br><span class="sp-sub">MANAGEMENT</span></div>
+  <div class="sp-mark"><svg viewBox="0 0 32 32" style="width:42px;height:42px" fill="none" aria-hidden="true">
+  <path d="M9 6h11a2 2 0 0 1 2 2v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <rect x="4" y="9" width="24" height="17" rx="5" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="2"/>
+  <path d="M28 15h-6a2.5 2.5 0 0 0 0 5h6" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="22.5" cy="17.5" r="1.4" fill="#fff"/>
+</svg></div>
+  <div class="sp-name">EXPENSE<br><span class="sp-sub">MANAGEMENT</span>
+    <div class="sp-tag mt-2">TRACK. APPROVE. CLEAR.</div></div>
   <div class="sp-bar"><span></span></div>
 </div>
 
@@ -164,25 +334,43 @@ a{color:var(--accent-2);text-decoration:none}
 <div id="login">
   <div class="login-brand">
     <div class="d-flex align-items-center gap-3">
-      <div class="logo-mark"><i class="bi bi-wallet2"></i></div>
-      <div class="wordmark">EXPENSE<br><span style="font-weight:600;color:#7DD3A8">MANAGEMENT</span></div>
+      <div class="logo-mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+  <path d="M9 6h11a2 2 0 0 1 2 2v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <rect x="4" y="9" width="24" height="17" rx="5" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="2"/>
+  <path d="M28 15h-6a2.5 2.5 0 0 0 0 5h6" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="22.5" cy="17.5" r="1.4" fill="#fff"/>
+</svg></div>
+      <div class="wordmark" style="color:#fff">EXPENSE<small style="color:#34D399">MANAGEMENT</small>
+        <div class="tagline" style="color:#93AEDF">Track. Approve. Clear.</div></div>
     </div>
-    <h1 class="mt-5" style="font-size:32px;line-height:1.25">Two ledgers.<br>One app.</h1>
-    <p class="mt-3" style="color:#B9CBEC;max-width:420px">Company claims move through manager and finance
-      approval. Personal spending stays private to you. Nothing crosses over.</p>
+    <h1 class="mt-5" style="font-size:36px;line-height:1.2;color:#fff">Two ledgers.<br>One workflow.</h1>
+    <p class="mt-3" style="color:#B9C7E4;max-width:430px">Claims route themselves through approval and
+      clearance based on rules you set, not names in code. Personal spending stays private to you.</p>
     <ul>
-      <li><i class="bi bi-check-circle-fill"></i>Company claims with approval workflow</li>
-      <li><i class="bi bi-check-circle-fill"></i>Private personal expense tracking</li>
-      <li><i class="bi bi-check-circle-fill"></i>Receipt photos stored in Google Drive</li>
-      <li><i class="bi bi-check-circle-fill"></i>Dashboards, reports and Excel export</li>
-      <li><i class="bi bi-check-circle-fill"></i>Role based access, checked on the server</li>
+      <li><i class="bi bi-diagram-3-fill"></i>Dynamic approval &amp; clearance workflow</li>
+      <li><i class="bi bi-shield-lock-fill"></i>20 granular permissions, checked on the server</li>
+      <li><i class="bi bi-camera-fill"></i>Receipt capture straight to Google Drive</li>
+      <li><i class="bi bi-graph-up-arrow"></i>Live dashboards, Excel and PDF export</li>
+      <li><i class="bi bi-moon-stars-fill"></i>Dark mode, offline drafts, installable app</li>
     </ul>
+    <div class="d-flex gap-2 mt-5 flex-wrap">
+      <div class="stat-chip"><b>13</b><span>Statuses</span></div>
+      <div class="stat-chip"><b>5</b><span>Roles</span></div>
+      <div class="stat-chip"><b>20</b><span>Permissions</span></div>
+      <div class="stat-chip"><b>0</b><span>Hard-coded names</span></div>
+    </div>
   </div>
   <div class="login-panel">
     <div class="login-box">
       <div class="d-lg-none d-flex align-items-center gap-3 mb-4">
-        <div class="logo-mark"><i class="bi bi-wallet2"></i></div>
-        <div class="wordmark" style="color:var(--navy)">EXPENSE<br><span style="font-weight:600;color:var(--green)">MANAGEMENT</span></div>
+        <div class="logo-mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+  <path d="M9 6h11a2 2 0 0 1 2 2v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <rect x="4" y="9" width="24" height="17" rx="5" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="2"/>
+  <path d="M28 15h-6a2.5 2.5 0 0 0 0 5h6" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="22.5" cy="17.5" r="1.4" fill="#fff"/>
+</svg></div>
+        <div class="wordmark">EXPENSE<small>MANAGEMENT</small>
+          <div class="tagline">Track. Approve. Clear.</div></div>
       </div>
       <h2 class="mb-1">Sign in</h2>
       <p class="text-muted-2 mb-4">Use the account your administrator created for you.</p>
@@ -204,7 +392,6 @@ a{color:var(--accent-2);text-decoration:none}
         <a href="#" class="small" onclick="forgotPw();return false">Forgot password?</a>
       </div>
       <button id="lgBtn" class="btn btn-accent w-100 py-2 fw-semibold" onclick="doLogin()">Sign in</button>
-      <p class="text-center text-muted-2 small mt-4 mb-0">Demo · admin / Admin@123 · employee01 / Employee@123</p>
     </div>
   </div>
 </div>
@@ -213,38 +400,55 @@ a{color:var(--accent-2);text-decoration:none}
 <div id="app" class="hide">
   <aside class="sidebar" id="sidebar">
     <div class="d-flex align-items-center gap-2 px-2 pb-3">
-      <div class="logo-mark" style="width:38px;height:38px;font-size:18px;border-radius:11px"><i class="bi bi-wallet2"></i></div>
-      <div class="wordmark" style="font-size:11px;color:var(--navy)">EXPENSE<br><span style="font-weight:600;color:var(--accent)">MANAGEMENT</span></div>
+      <div class="logo-mark" style="width:38px;height:38px;border-radius:12px"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+  <path d="M9 6h11a2 2 0 0 1 2 2v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <rect x="4" y="9" width="24" height="17" rx="5" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="2"/>
+  <path d="M28 15h-6a2.5 2.5 0 0 0 0 5h6" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="22.5" cy="17.5" r="1.4" fill="#fff"/>
+</svg></div>
+      <div class="wordmark" style="font-size:11px">EXPENSE<small style="font-size:9.5px">MANAGEMENT</small></div>
     </div>
     <div class="mode-toggle mb-3">
       <button id="mtCompany" onclick="setMode('company')">COMPANY</button>
       <button id="mtPersonal" onclick="setMode('personal')">PERSONAL</button>
     </div>
     <nav class="nav flex-column gap-1" id="navList"></nav>
-    <div class="px-2 mt-4 pt-3 border-top">
-      <div class="small fw-semibold" id="sbName">—</div>
-      <div class="small text-muted-2" id="sbRole">—</div>
-      <button class="btn btn-sm btn-link px-0 text-danger" onclick="doLogout()">Sign out</button>
+    <div class="mt-4 pt-3 border-top">
+      <div class="side-user">
+        <div class="side-av" id="sbAv">—</div>
+        <div class="min-w-0 flex-grow-1">
+          <div class="small fw-semibold text-truncate" id="sbName">—</div>
+          <div class="small text-truncate" id="sbRole">—</div>
+        </div>
+        <button class="btn btn-sm btn-link p-0" style="color:#F8A9A9" onclick="doLogout()"
+          title="Sign out"><i class="bi bi-box-arrow-right"></i></button>
+      </div>
     </div>
   </aside>
   <div id="backdrop" class="backdrop hide" onclick="toggleSidebar()"></div>
 
   <header class="topbar">
     <div class="d-flex align-items-center gap-2">
-      <button class="btn btn-sm btn-light d-lg-none" onclick="toggleSidebar()"><i class="bi bi-list fs-5"></i></button>
+      <button class="icon-btn d-lg-none" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
       <div class="flex-grow-1">
         <div class="fw-bold" id="pageTitle" style="font-size:16px">Dashboard</div>
         <div class="small text-muted-2" id="pageSub"></div>
       </div>
-      <button class="btn btn-sm btn-light position-relative" onclick="go('notifications')">
-        <i class="bi bi-bell fs-6"></i>
-        <span id="notifDot" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger hide">0</span>
+      <button class="icon-btn" onclick="toggleTheme()" title="Switch theme" id="themeBtn">
+        <i class="bi bi-moon-stars"></i></button>
+      <button class="icon-btn position-relative" onclick="go('notifications')" title="Notifications">
+        <i class="bi bi-bell"></i>
+        <span id="notifDot" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger hide" style="font-size:9px">0</span>
       </button>
       <div class="dropdown">
-        <button class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-person-circle fs-6"></i></button>
+        <button class="icon-btn" data-bs-toggle="dropdown"><i class="bi bi-person"></i></button>
         <ul class="dropdown-menu dropdown-menu-end">
           <li><a class="dropdown-item" href="#" onclick="go('profile');return false">My profile</a></li>
           <li><a class="dropdown-item" href="#" onclick="go('notifications');return false">Notifications</a></li>
+          <li><a class="dropdown-item" href="#" onclick="enableDesktopAlerts();return false">
+            <i class="bi bi-bell me-2"></i>Enable alerts &amp; sound</a></li>
+          <li><a class="dropdown-item" href="#" onclick="toggleTheme();return false">
+            <i class="bi bi-circle-half me-2"></i>Switch theme</a></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item text-danger" href="#" onclick="doLogout();return false">Sign out</a></li>
         </ul>
@@ -280,7 +484,7 @@ a{color:var(--accent-2);text-decoration:none}
 /* =================================================================================================
    CONFIGURATION — paste your Apps Script Web App /exec URL here
    ================================================================================================= */
-const API_URL = 'https://script.google.com/macros/s/AKfycbw06sHYQXMTE7hXH0XbdiqrG-uSR8cx8Z01VVTCJ-4uWDgr8V5afLI3iiWUB8PEKOjXYQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxidjmXPNu0t3wZr2FJhH1KnA7e-kWxeQQrPO_XzO3TrI0z6jkIK_qPg8vVULWe3y_0Ew/exec';
 
 /* ================================ STATE ================================ */
 const S = { token:null, user:null, perms:[], settings:{}, meta:null, mode:'company',
@@ -348,6 +552,111 @@ function hardLogout(msg){
 async function doLogout(){ try{ await api('logout'); }catch(e){} hardLogout(); }
 
 /* ================================ BOOT ================================ */
+/* ================================ THEME ================================ */
+function currentTheme(){ return document.documentElement.getAttribute('data-theme') || 'light'; }
+function applyTheme(t){
+  if(t==='auto') t = matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content = t==='dark' ? '#0B1120' : '#1E3A8A';
+  const btn=document.getElementById('themeBtn');
+  if(btn) btn.innerHTML = `<i class="bi bi-${t==='dark'?'sun':'moon-stars'}"></i>`;
+  Object.values(S.charts||{}).forEach(c=>{ try{ c.destroy(); }catch(e){} });
+  S.charts={};
+}
+function toggleTheme(){
+  const next = currentTheme()==='dark' ? 'light' : 'dark';
+  LS.set('theme', next); applyTheme(next);
+  toast(next==='dark' ? 'Dark mode on' : 'Light mode on','info');
+  if(S.view==='dashboard') vDashboard();     // charts need redrawing in the new palette
+}
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change', ()=>{
+  if((LS.get('theme')||'auto')==='auto') applyTheme('auto');
+});
+
+/* ================================ ALERTS + SOUND ================================ */
+const ALERTS = { on: LS.get('alerts')!==false, sound: LS.get('sound')!==false, ctx:null };
+
+/** Short two-tone chime, generated rather than loaded — no audio file to host. */
+function chime(kind){
+  if(!ALERTS.sound) return;
+  try{
+    ALERTS.ctx = ALERTS.ctx || new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=ALERTS.ctx; if(ctx.state==='suspended') ctx.resume();
+    const notes = kind==='urgent' ? [880,660] : kind==='done' ? [660,880] : [784,1046];
+    notes.forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=f;
+      const t0=ctx.currentTime+i*0.13;
+      g.gain.setValueAtTime(0,t0);
+      g.gain.linearRampToValueAtTime(0.14,t0+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+0.28);
+      o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0+0.3);
+    });
+  }catch(e){}
+}
+
+async function enableDesktopAlerts(){
+  if(!('Notification' in window)) return toast('This browser cannot show desktop alerts.','warn');
+  chime();                                   // also unlocks audio on mobile via the user gesture
+  if(Notification.permission==='granted'){
+    LS.set('alerts',true); ALERTS.on=true;
+    return toast('Alerts are already on.','success');
+  }
+  if(Notification.permission==='denied')
+    return toast('Alerts are blocked. Enable them in your browser site settings.','warn');
+  const res=await Notification.requestPermission();
+  if(res==='granted'){ LS.set('alerts',true); ALERTS.on=true;
+    pushAlert('Alerts enabled','You will be notified when something needs your approval.');
+    toast('Alerts on. You will hear a chime for new items.','success');
+  } else toast('Alerts not enabled.','info');
+}
+
+function pushAlert(title, body, tag){
+  if(!ALERTS.on || !('Notification' in window) || Notification.permission!=='granted') return;
+  try{
+    const opts={ body:body, icon:'logo.svg', badge:'logo.svg', tag:tag||'expense',
+                 renotify:true, vibrate:[80,40,80] };
+    if(navigator.serviceWorker && navigator.serviceWorker.ready){
+      navigator.serviceWorker.ready.then(reg=>reg.showNotification(title,opts)).catch(()=>{
+        new Notification(title,opts); });
+    } else new Notification(title,opts);
+  }catch(e){}
+}
+
+/** Watches the unread count and the task inbox, and alerts on anything new. */
+async function loadNotifCount(){
+  if(!S.token) return;
+  try{
+    const r=await api('getNotifications'); if(!r.ok) return;
+    const dot=document.getElementById('notifDot');
+    if(dot){ dot.textContent=r.unread; dot.classList.toggle('hide', !r.unread); }
+
+    const seen = LS.get('seenNotif')||[];
+    const fresh = (r.rows||[]).filter(n=>String(n.IsRead)!=='true' && !seen.includes(n.NotificationID));
+    if(fresh.length && S.notifReady){
+      const n=fresh[0];
+      pushAlert(n.Title, n.Message, n.ReferenceID||'expense');
+      chime(/overdue|reject/i.test(n.Title) ? 'urgent' : /approv|paid|clear/i.test(n.Title) ? 'done' : '');
+      if(fresh.length>1) toast(`${fresh.length} new notifications`,'info');
+    }
+    LS.set('seenNotif', (r.rows||[]).slice(0,60).map(n=>n.NotificationID));
+    S.notifReady = true;
+    S.notif = r.unread;
+
+    // badge the sidebar and bottom nav when tasks are waiting
+    const t = await api('getMyTasks');
+    if(t.ok){
+      const open = t.counts.pending + t.counts.clearance + t.counts.payment;
+      S.openTasks = open;
+      document.querySelectorAll('[data-nav="approvals"] .nav-badge').forEach(b=>{
+        b.textContent = open; b.classList.toggle('hide', !open); });
+      const bdot=document.querySelector('.bnav .dot');
+      if(bdot) bdot.classList.toggle('hide', !open);
+    }
+  }catch(e){}
+}
+
 const SPLASH_AT = Date.now();
 function hideSplash(){
   const wait = Math.max(0, 700-(Date.now()-SPLASH_AT));   // never flash by too fast
@@ -365,6 +674,7 @@ window.addEventListener('error', e=>{
 
 async function boot(){
   try{
+    applyTheme(LS.get('theme')||'auto');
     if('serviceWorker' in navigator && location.protocol==='https:')
       navigator.serviceWorker.register('sw.js').catch(()=>{});
     const t=LS.get('token');
@@ -389,9 +699,11 @@ async function startApp(){
   document.getElementById('app').classList.remove('hide');
   document.getElementById('sbName').textContent=S.user.Name;
   document.getElementById('sbRole').textContent=S.user.Role+' · '+(S.user.Department||'—');
+  document.getElementById('sbAv').textContent=(S.user.Name||'?').split(' ')
+    .map(w=>w[0]).slice(0,2).join('').toUpperCase();
   const meta=await api('getMeta'); if(meta.ok) S.meta=meta;
   setMode(LS.get('mode')||'company', true);
-  loadNotifCount(); setInterval(loadNotifCount, 120000);
+  loadNotifCount(); setInterval(loadNotifCount, 45000);
   syncQueue();
 }
 
@@ -427,8 +739,10 @@ const NAV = () => {
 function renderNav(){
   const items=NAV(); let html='', sec='';
   items.forEach(it=>{ if(it.sec && it.sec!==sec){ sec=it.sec; html+=`<div class="nav-sec">${esc(sec)}</div>`; }
-    html+=`<a class="nav-link ${S.view===it.k?'active':''}" href="#" onclick="go('${it.k}');return false">
-      <i class="bi bi-${it.i}"></i>${esc(it.t)}</a>`; });
+    const badge = it.k==='approvals'
+      ? `<span class="nav-badge ${S.openTasks?'':'hide'}">${S.openTasks||0}</span>` : '';
+    html+=`<a class="nav-link ${S.view===it.k?'active':''}" data-nav="${it.k}" href="#"
+      onclick="go('${it.k}');return false"><i class="bi bi-${it.i}"></i>${esc(it.t)}${badge}</a>`; });
   document.getElementById('navList').innerHTML=html;
 
   const b = S.mode==='personal'
@@ -441,7 +755,8 @@ function renderNav(){
         t:(can('EXPENSE_APPROVE')||can('EXPENSE_CLEAR')||can('EXPENSE_PAYMENT'))?'Approve':'Reports'},
        {k:'profile',i:'person',t:'Profile'}];
   document.getElementById('bnav').innerHTML=b.map(x=>`<a href="#" class="${x.fab?'fab ':''}${S.view===x.k?'active':''}"
-     onclick="go('${x.k}');return false"><i class="bi bi-${x.i}"></i>${esc(x.t)}</a>`).join('');
+     onclick="go('${x.k}');return false"><i class="bi bi-${x.i}"></i>${esc(x.t)}${
+       x.k==='approvals'?`<span class="dot ${S.openTasks?'':'hide'}"></span>`:''}</a>`).join('');
 }
 
 function setMode(m, silent){
@@ -489,18 +804,27 @@ async function vDashboard(){
   S.mode==='personal' ? renderPersonalDash(r) : renderCompanyDash(r);
 }
 
-function kpiCard(label,val,sub,icon,color,bg){
-  return `<div class="col-6 col-lg-4 col-xl-2"><div class="card-x kpi h-100">
-    <div class="d-flex justify-content-between align-items-start">
-      <div><div class="lbl">${esc(label)}</div><div class="val">${esc(val)}</div>
-      <div class="sub">${esc(sub||'')}</div></div>
+function kpiCard(label,val,sub,icon,color,bg,cols){
+  return `<div class="${cols||'col-6 col-lg-4 col-xl-2'}"><div class="card-x kpi h-100">
+    <div class="lbl">${esc(label)}</div>
+    <div class="val">${esc(val)}</div>
+    <div class="d-flex justify-content-between align-items-end mt-1">
+      <div class="sub">${esc(sub||'')}</div>
       <div class="kpi-ic" style="background:${bg};color:${color}"><i class="bi bi-${icon}"></i></div>
     </div></div></div>`;
 }
 
+function greeting(){
+  const hr=new Date().getHours();
+  return hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+}
 function renderCompanyDash(r){
   const k=r.kpi;
   setView(`
+  <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+    <div><h4 class="mb-0">${esc(greeting())}, ${esc((S.user.Name||'').split(' ')[0])}</h4>
+      <div class="small text-muted-2">Here is where your company spending stands today.</div></div>
+  </div>
   <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
     <div class="d-lg-none mode-toggle" style="width:220px">
       <button class="${S.mode==='company'?'on':''}" onclick="setMode('company')">COMPANY</button>
@@ -514,13 +838,27 @@ function renderCompanyDash(r){
       <div class="small" style="color:#C7D6F5">${money(k.myTasksAmount)} needs your decision</div></div>
     <button class="btn btn-light btn-sm ms-auto fw-semibold" onclick="go('approvals')">Open inbox</button>
   </div>`:''}
+  <div class="card-x p-3 mb-3">
+    <div class="fw-bold mb-3" style="font-size:13px">Quick actions</div>
+    <div class="row g-2">
+      ${[can('EXPENSE_CREATE')?['add','plus-lg','Add expense',0]:null,
+         ['expenses','journal-text','My expenses',0],
+         (can('EXPENSE_APPROVE')||can('EXPENSE_CLEAR')||can('EXPENSE_PAYMENT'))?['approvals','inbox','My approvals',k.myTasks]:null,
+         can('EXPENSE_CLEAR')?['clearance','patch-check','Clearance',0]:null,
+         can('EXPENSE_EXPORT')?['reports','bar-chart','Reports',0]:null
+        ].filter(Boolean).map(([v,i,t,n])=>`
+        <div class="col"><button class="qa-btn position-relative" onclick="go('${v}')">
+          ${n?`<span class="qa-n">${n}</span>`:''}
+          <i class="bi bi-${i}"></i><span>${esc(t)}</span></button></div>`).join('')}
+    </div>
+  </div>
   <div class="row g-3 mb-3">
-    ${kpiCard('Total expenses',money(k.total),k.count+' records','wallet2','#1D4ED8','#EEF3FF')}
-    ${kpiCard('This month',money(k.month),'Current period','calendar3','#12336B','#EEF3FF')}
-    ${kpiCard('Pending approval',money(k.pending),k.pendingCount+' waiting','hourglass-split','#B45309','#FFF7E6')}
-    ${kpiCard('Approved',money(k.approved),k.approvedCount+' claims','patch-check','#15803D','#ECFDF3')}
-    ${kpiCard('Clearance',money(k.clearance),k.clearanceCount+' to confirm','shield-check','#0F7B4F','#ECFDF3')}
-    ${kpiCard('Paid',money(k.paid),k.paidCount+' settled','cash-coin','#166534','#DCFCE7')}
+    ${kpiCard('Total expenses',money(k.total),k.count+' records','wallet2','#1D4ED8','#EFF6FF')}
+    ${kpiCard('This month',money(k.month),'Current period','calendar3','#1E3A8A','#EFF6FF')}
+    ${kpiCard('Pending approval',money(k.pending),k.pendingCount+' waiting','hourglass-split','#B45309','#FFFBEB')}
+    ${kpiCard('Approved',money(k.approved),k.approvedCount+' claims','patch-check','#047857','#ECFDF5')}
+    ${kpiCard('Cleared',money(k.cleared),k.clearedCount+' confirmed','shield-check','#0369A1','#F0F9FF')}
+    ${kpiCard('Paid',money(k.paid),k.paidCount+' settled','cash-coin','#1D4ED8','#EFF6FF')}
   </div>
   <div class="row g-3">
     <div class="col-lg-8"><div class="card-x p-3">
@@ -534,7 +872,8 @@ function renderCompanyDash(r){
     <div class="col-lg-6"><div class="card-x p-3">
       <div class="fw-bold mb-2">Top spenders</div><div class="chart-wrap chart-sm"><canvas id="cEmp"></canvas></div></div></div>
     <div class="col-lg-6"><div class="card-x p-3">
-      <div class="fw-bold mb-2">Pending vs approved vs paid</div><div class="chart-wrap chart-sm"><canvas id="cSt"></canvas></div></div></div>
+      <div class="fw-bold mb-3">Approval summary</div>
+      <div class="chart-wrap chart-sm"><canvas id="cSt"></canvas></div></div></div>
     <div class="col-12"><div class="card-x">
       <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
         <div class="fw-bold">Recent activity</div>
@@ -542,13 +881,14 @@ function renderCompanyDash(r){
       ${r.recent.length? r.recent.map(rowLine).join('') : emptyBox('Nothing here yet','Submitted expenses will appear here.')}
     </div></div>
   </div>`);
-  chart('cTrend','bar',r.trend,'#1D4ED8');
+  chart('cTrend','line',r.trend,'#2563EB');
   chart('cCat','doughnut',r.byCategory);
-  chart('cDep','bar',r.byDepartment,'#12336B',true);
-  chart('cBr','bar',r.byBranch,'#16A34A',true);
-  chart('cEmp','bar',r.byEmployee,'#7C3AED',true);
-  chart('cSt','doughnut',{ labels:['Pending','Approved','Paid','Rejected'],
-    values:[k.pending,k.approved,k.paid,k.rejected] }, ['#D97706','#16A34A','#166534','#DC2626']);
+  chart('cDep','bar',r.byDepartment,'#1E3A8A',true);
+  chart('cBr','bar',r.byBranch,'#10B981',true);
+  chart('cEmp','bar',r.byEmployee,'#6366F1',true);
+  chart('cSt','doughnut',{ labels:['Pending','Approved','Cleared','Paid','Rejected'],
+    values:[k.pendingCount,k.approvedCount,k.clearedCount,k.paidCount,k.rejectedCount] },
+    ['#F59E0B','#10B981','#0EA5E9','#2563EB','#EF4444']);
 }
 
 function renderPersonalDash(r){
@@ -560,25 +900,25 @@ function renderPersonalDash(r){
       <button class="${S.mode==='personal'?'on':''}" onclick="setMode('personal')">PERSONAL</button></div>
     <button class="btn btn-sm btn-soft ms-auto" onclick="editBudget()"><i class="bi bi-sliders me-1"></i>Set income & budget</button>
   </div>
-  <div class="card-x p-4 mb-3" style="background:linear-gradient(140deg,#0F7B4F,#0B5F3C);color:#fff;border:0">
+  <div class="card-x hero p-4 mb-3">
     <div class="small" style="color:#BBF7D0">Spent this month</div>
     <div style="font-size:32px;font-weight:800;letter-spacing:-.02em">${money(k.spent)}</div>
     <div class="d-flex gap-4 mt-3">
-      <div><div class="small" style="color:#BBF7D0">Income</div><div class="fw-bold">${money(k.income)}</div></div>
-      <div><div class="small" style="color:#BBF7D0">Remaining</div><div class="fw-bold">${money(k.remaining)}</div></div>
-      <div><div class="small" style="color:#BBF7D0">Records</div><div class="fw-bold">${k.count}</div></div>
+      <div><div class="small" style="color:rgba(255,255,255,.75)">Income</div><div class="fw-bold">${money(k.income)}</div></div>
+      <div><div class="small" style="color:rgba(255,255,255,.75)">Remaining</div><div class="fw-bold">${money(k.remaining)}</div></div>
+      <div><div class="small" style="color:rgba(255,255,255,.75)">Records</div><div class="fw-bold">${k.count}</div></div>
     </div>
   </div>
   <div class="row g-3 mb-3">
-    ${kpiCard('Monthly budget',money(k.budget),pct+'% used','pie-chart','#0F7B4F','#ECFDF3')}
-    ${kpiCard('Top category',k.topCategory,money(k.topAmount),'trophy','#B45309','#FFF7E6')}
-    ${kpiCard('All time',money(k.total),'Every record','clock-history','#12336B','#EEF3FF')}
+    ${kpiCard('Monthly budget',money(k.budget),pct+'% used','pie-chart','#047857','#ECFDF5','col-6 col-lg-4')}
+    ${kpiCard('Top category',k.topCategory,money(k.topAmount),'trophy','#B45309','#FFFBEB','col-6 col-lg-4')}
+    ${kpiCard('All time',money(k.total),'Every record','clock-history','#1E3A8A','#EFF6FF','col-12 col-lg-4')}
   </div>
   <div class="card-x p-3 mb-3">
     <div class="d-flex justify-content-between"><div class="fw-bold">Budget used</div>
       <div class="small text-muted-2">${money(k.spent)} of ${money(k.budget)}</div></div>
     <div class="progress mt-2" style="height:11px;border-radius:8px">
-      <div class="progress-bar" style="width:${pct}%;background:${pct>90?'#DC2626':pct>70?'#D97706':'#16A34A'}"></div></div>
+      <div class="progress-bar" style="width:${pct}%;background:${pct>90?'#EF4444':pct>70?'#F59E0B':'#10B981'};border-radius:8px"></div></div>
   </div>
   <div class="row g-3">
     <div class="col-lg-5"><div class="card-x p-3">
@@ -593,27 +933,43 @@ function renderPersonalDash(r){
     </div></div>
   </div>`);
   chart('pCat','doughnut',r.byCategory);
-  chart('pTrend','bar',r.trend,'#16A34A');
+  chart('pTrend','line',r.trend,'#10B981');
 }
 
-const PALETTE=['#1D4ED8','#16A34A','#D97706','#DC2626','#0EA5E9','#7C3AED','#0F7B4F','#64748B'];
+const PALETTE=['#2563EB','#10B981','#F59E0B','#EF4444','#0EA5E9','#6366F1','#1E3A8A','#94A3B8'];
+const gridColor = () => currentTheme()==='dark' ? '#243047' : '#EEF1F7';
+const tickColor = () => currentTheme()==='dark' ? '#8D9BB5' : '#64748B';
 function chart(id,type,series,color,horizontal){
   const el=document.getElementById(id); if(!el||!series) return;
   if(S.charts[id]) S.charts[id].destroy();
+  const isLine = type==='line';
+  let fillBg;
+  if(isLine && el.getContext){
+    const g=el.getContext('2d').createLinearGradient(0,0,0,230);
+    g.addColorStop(0, (color||'#2563EB')+'55'); g.addColorStop(1, (color||'#2563EB')+'00');
+    fillBg=g;
+  }
   const cfg={ type: horizontal?'bar':type,
     data:{ labels:series.labels, datasets:[{ label:'Amount', data:series.values,
-      backgroundColor: Array.isArray(color)? color : (type==='doughnut'? PALETTE : (color||'#1D4ED8')),
-      borderRadius: type==='doughnut'?0:6, borderWidth:0, maxBarThickness:34 }] },
+      backgroundColor: isLine ? fillBg
+        : (Array.isArray(color)? color : (type==='doughnut'? PALETTE : (color||'#2563EB'))),
+      borderColor: isLine ? (color||'#2563EB') : undefined,
+      borderWidth: isLine ? 2.5 : 0, fill:isLine, tension:isLine?0.38:0,
+      pointRadius:isLine?3:0, pointHoverRadius:isLine?5:0,
+      pointBackgroundColor:'#fff', pointBorderColor:color||'#2563EB', pointBorderWidth:2,
+      borderRadius: type==='doughnut'?0:8, maxBarThickness:32,
+      hoverOffset: type==='doughnut'?6:0 }] },
     options:{ responsive:true, maintainAspectRatio:false, indexAxis: horizontal?'y':'x',
       animation:{duration:250},
       plugins:{ legend:{ display:type==='doughnut', position:'right',
                   labels:{boxWidth:10,font:{size:11}} },
         tooltip:{ callbacks:{ label:c=>' '+money(c.parsed.y??c.parsed.x??c.parsed) } } },
       scales: type==='doughnut'? {} : {
-        y:{ beginAtZero:true, grid:{color:'#F1F5F9'}, ticks:{font:{size:11},
-            callback:v=>Number(v).toLocaleString()} },
-        x:{ grid:{display:false}, ticks:{font:{size:11}} } },
-      cutout: type==='doughnut'?'62%':undefined } };
+        y:{ beginAtZero:true, grid:{color:gridColor()}, border:{display:false},
+            ticks:{font:{size:11},color:tickColor(),callback:v=>Number(v).toLocaleString()} },
+        x:{ grid:{display:false}, border:{display:false}, ticks:{font:{size:11},color:tickColor()} } },
+      cutout: type==='doughnut'?'66%':undefined,
+      interaction:{intersect:false,mode:'index'} } };
   S.charts[id]=new Chart(el,cfg);
 }
 
@@ -642,10 +998,12 @@ function quickRange(v){
 /* ================================ SHARED ROW RENDER ================================ */
 function stClass(s){
   s = String(s||'');
-  if(['PAID','CLOSED','CLEARED'].includes(s)) return 'st-paid';
-  if(['REJECTED','RETURNED'].includes(s)) return 'st-rejected';
+  if(s==='CLEARED') return 'st-cleared';
+  if(s==='PAID') return 'st-paid';
+  if(s==='RETURNED') return 'st-returned';
+  if(s==='REJECTED') return 'st-rejected';
   if(s==='APPROVED') return 'st-approved';
-  if(s==='CANCELLED') return 'st-cancel';
+  if(s==='CLOSED'||s==='CANCELLED') return 'st-cancel';
   if(s==='DRAFT') return 'st-draft';
   return 'st-pending';
 }
@@ -1950,28 +2308,205 @@ async function vSettings(){
   loading();
   const r=await api('getSettings');
   if(!r.ok) return setView(alertBox(r.message));
-  setView(`<div class="card-x p-3 p-lg-4" style="max-width:820px">
-    <h5 class="mb-1">System settings</h5>
-    <p class="text-muted-2 small mb-4">These apply to everyone. Changes take effect on the next request.</p>
-    <div class="row g-3">
-      ${r.rows.map((s,i)=>`<div class="col-md-6">
-        <label class="form-label small fw-semibold">${esc(s.Key)}</label>
-        ${['true','false'].includes(String(s.Value))
-          ? `<select class="form-select" data-key="${esc(s.Key)}">
-              <option value="true" ${s.Value==='true'?'selected':''}>Enabled</option>
-              <option value="false" ${s.Value==='false'?'selected':''}>Disabled</option></select>`
-          : `<input class="form-control" data-key="${esc(s.Key)}" value="${esc(s.Value)}">`}
-        <div class="form-text">${esc(s.Description||'')}</div></div>`).join('')}
-    </div>
-    <button class="btn btn-accent mt-4 px-4" onclick="saveSettings()">Save settings</button>
+  const GROUPS={
+    'Company':['CompanyName','Currency','LogoText'],
+    'Expense rules':['MaxExpenseAmount','RequireReceipt','ReceiptThreshold','MaxUploadMB'],
+    'Approval workflow':['AllowSelfApproval','EnforceSeparationOfDuties','AllowManualApprover',
+      'AllowPartialApproval','AllowResubmitReturned','ClearanceRequired'],
+    'Timing & reminders':['DefaultSlaHours','ClearanceSlaHours','ReminderHours','RemindersEnabled','SessionHours'],
+    'Notifications':['EmailNotifications']
+  };
+  const placed=new Set(Object.values(GROUPS).flat());
+  GROUPS['Other']=r.rows.map(s=>s.Key).filter(k=>!placed.has(k));
+  const field=s=>`<div class="col-md-6">
+      <label class="form-label small fw-semibold">${esc(s.Key)}</label>
+      ${['true','false'].includes(String(s.Value))
+        ? `<div class="form-check form-switch pt-1">
+            <input class="form-check-input" type="checkbox" role="switch" data-key="${esc(s.Key)}"
+              data-bool="1" ${s.Value==='true'?'checked':''} style="width:2.6em;height:1.35em">
+            <label class="form-check-label small text-muted-2 ms-1">${esc(s.Description||'')}</label></div>`
+        : `<input class="form-control" data-key="${esc(s.Key)}" value="${esc(s.Value)}">
+           <div class="form-text">${esc(s.Description||'')}</div>`}
+    </div>`;
+
+  setView(`
+  <ul class="nav nav-pills gap-1 mb-3">
+    <li class="nav-item"><a class="nav-link active py-1 px-3" style="background:var(--accent)" href="#"
+      onclick="return false">System settings</a></li>
+    <li class="nav-item"><a class="nav-link py-1 px-3" style="color:var(--text-2)" href="#"
+      onclick="vBackups();return false">Backup &amp; restore</a></li>
+    <li class="nav-item"><a class="nav-link py-1 px-3" style="color:var(--text-2)" href="#"
+      onclick="vAlertPrefs();return false">Alerts &amp; appearance</a></li>
+  </ul>
+  <div style="max-width:900px">
+  ${Object.entries(GROUPS).filter(([,keys])=>keys.length).map(([name,keys])=>`
+    <div class="card-x p-3 p-lg-4 mb-3">
+      <div class="fw-bold mb-3">${esc(name)}</div>
+      <div class="row g-3">${keys.map(k=>{
+        const s=r.rows.find(x=>x.Key===k); return s?field(s):''; }).join('')}</div>
+    </div>`).join('')}
+    <button class="btn btn-accent px-4" onclick="saveSettings()">
+      <i class="bi bi-check2 me-1"></i>Save settings</button>
   </div>`);
 }
 async function saveSettings(){
-  const rows=[...document.querySelectorAll('[data-key]')].map(el=>({Key:el.dataset.key,Value:el.value}));
+  const rows=[...document.querySelectorAll('[data-key]')].map(el=>({
+    Key:el.dataset.key, Value: el.dataset.bool ? String(el.checked) : el.value }));
   const r=await api('updateSettings',{rows});
   if(!r.ok) return toast(r.message,'danger');
   const s=await api('session'); if(s.ok) S.settings=s.settings;
   toast('Settings saved.');
+}
+
+/* ================================ BACKUP & RESTORE ================================ */
+async function vBackups(){
+  loading();
+  const r=await api('getBackups');
+  if(!r.ok) return setView(alertBox(r.message));
+  document.getElementById('pageTitle').textContent='Backup & restore';
+  setView(`
+  <div class="card-x hero p-4 mb-3">
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+      <i class="bi bi-shield-check" style="font-size:30px"></i>
+      <div class="flex-grow-1">
+        <div class="fw-bold" style="font-size:17px">Rights &amp; workflow backup</div>
+        <div class="small" style="color:rgba(255,255,255,.82)">
+          Every role, granted and denied permission, reporting line, workflow step and setting —
+          saved as a file in your Drive. Runs automatically at 03:00 daily.</div>
+      </div>
+      <button class="btn btn-light fw-semibold" onclick="runBackup()">
+        <i class="bi bi-cloud-arrow-up me-1"></i>Back up now</button>
+    </div>
+  </div>
+  <div class="d-flex gap-2 mb-3 flex-wrap">
+    <a class="btn btn-sm btn-soft" href="${esc(r.folderUrl)}" target="_blank" rel="noopener">
+      <i class="bi bi-folder2-open me-1"></i>Open Drive folder</a>
+    <span class="btn btn-sm btn-light disabled">Last automatic: ${r.lastAuto?dtime(r.lastAuto):'not yet run'}</span>
+    <button class="btn btn-sm btn-light ms-auto" onclick="vSettings()">
+      <i class="bi bi-arrow-left me-1"></i>Back to settings</button>
+  </div>
+  <div class="card-x">
+    <div class="p-3 border-bottom fw-bold">${r.rows.length} backup${r.rows.length===1?'':'s'} — newest first</div>
+    <div class="table-responsive"><table class="table table-x">
+      <thead><tr><th>Taken</th><th>File</th><th>Size</th><th></th></tr></thead>
+      <tbody>${r.rows.map(b=>`<tr>
+        <td class="fw-semibold">${dtime(b.created)}</td>
+        <td class="small text-muted-2">${esc(b.name)}</td>
+        <td class="small">${(b.size/1024).toFixed(1)} KB</td>
+        <td class="text-end"><div class="btn-group btn-group-sm">
+          <a class="btn btn-light" href="${esc(b.url)}" target="_blank" rel="noopener" title="View"><i class="bi bi-eye"></i></a>
+          <button class="btn btn-light" onclick="previewRestore('${esc(b.id)}','${esc(b.name)}')"
+            title="Restore"><i class="bi bi-arrow-counterclockwise"></i></button>
+        </div></td></tr>`).join('')}</tbody></table></div>
+    ${r.rows.length?'':emptyBox('No backups yet','Take one now, or wait for tonight\'s automatic run.')}
+    <div class="p-3 small text-muted-2 border-top">
+      The 30 most recent backups are kept. Expense records are not included — those live in the
+      spreadsheet, which has its own version history.</div>
+  </div>`);
+}
+async function runBackup(){
+  toast('Writing backup…','info');
+  const r=await api('backupNow',{label:'manual'});
+  if(!r.ok) return toast(r.message,'danger');
+  toast(`Backed up ${r.users} users and ${r.steps} workflow steps.`);
+  chime('done'); vBackups();
+}
+async function previewRestore(fileId, name){
+  const r=await api('previewRestore',{fileId});
+  if(!r.ok) return toast(r.message,'danger');
+  const changes=r.changes||[];
+  formModal('Restore from backup', `
+    <div class="small text-muted-2 mb-3">From <b>${esc(name)}</b><br>
+      Taken ${dtime(r.meta.takenAt)} · ${r.workflowSteps} workflow steps · ${r.settings} settings</div>
+    ${changes.length?`
+      <div class="alert alert-warning py-2 px-3 small">
+        <b>${changes.length}</b> user${changes.length===1?'':'s'} would change:</div>
+      <div style="max-height:220px;overflow:auto" class="mb-3">
+        ${changes.map(c=>`<div class="d-flex gap-2 py-2 border-bottom" style="border-color:var(--line-2)!important">
+          <i class="bi bi-${c.change==='missing'?'exclamation-triangle text-warning':'arrow-repeat'}"></i>
+          <div><div class="small fw-semibold">${esc(c.Name||c.UserID)}</div>
+            <div class="small text-muted-2">${esc(c.detail)}</div></div></div>`).join('')}
+      </div>`
+    :`<div class="alert alert-success py-2 px-3 small">
+        Nothing would change — permissions already match this backup.</div>`}
+    <div class="fw-semibold small mb-2">What to restore</div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" id="rsUsers" checked>
+      <label class="form-check-label small" for="rsUsers">Roles, permissions and reporting lines</label></div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" id="rsWf" checked>
+      <label class="form-check-label small" for="rsWf">Approval workflow steps</label></div>
+    <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="rsSet">
+      <label class="form-check-label small" for="rsSet">System settings (company name and currency are kept)</label></div>
+    <div class="small text-muted-2">A safety backup is taken first, and your own account is never
+      modified, so you cannot lock yourself out.</div>`,
+    async()=>{
+      const r2=await api('restoreBackup',{ fileId, scope:{
+        users:document.getElementById('rsUsers').checked,
+        workflow:document.getElementById('rsWf').checked,
+        settings:document.getElementById('rsSet').checked }});
+      if(!r2.ok){ toast(r2.message,'danger'); return false; }
+      toast(`Restored ${r2.users} users, ${r2.workflow} steps.`); vBackups(); return true;
+    },'Restore');
+}
+
+/* ================================ ALERTS & APPEARANCE ================================ */
+function vAlertPrefs(){
+  document.getElementById('pageTitle').textContent='Alerts & appearance';
+  const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  const badge = perm==='granted'?'<span class="badge-st st-approved">Enabled</span>'
+              : perm==='denied'?'<span class="badge-st st-rejected">Blocked in browser</span>'
+              : perm==='unsupported'?'<span class="badge-st st-cancel">Not supported</span>'
+              : '<span class="badge-st st-pending">Not enabled</span>';
+  const theme = LS.get('theme')||'auto';
+  setView(`
+  <div style="max-width:760px">
+    <button class="btn btn-sm btn-light mb-3" onclick="vSettings()">
+      <i class="bi bi-arrow-left me-1"></i>Back to settings</button>
+
+    <div class="card-x p-4 mb-3">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div><div class="fw-bold">Desktop &amp; mobile alerts</div>
+          <div class="small text-muted-2">Get notified when something needs your approval,
+            even when this tab is in the background.</div></div>
+        ${badge}
+      </div>
+      ${perm==='granted'?'':`<button class="btn btn-accent" onclick="enableDesktopAlerts()">
+        <i class="bi bi-bell me-1"></i>Enable alerts</button>`}
+      ${perm==='denied'?`<div class="alert alert-warning py-2 px-3 small mt-3 mb-0">
+        Your browser is blocking alerts for this site. Click the padlock in the address bar →
+        Site settings → Notifications → Allow.</div>`:''}
+      <div class="row g-3 mt-1">
+        <div class="col-md-6"><div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="prefAlerts" ${ALERTS.on?'checked':''}
+            style="width:2.6em;height:1.35em" onchange="LS.set('alerts',this.checked);ALERTS.on=this.checked">
+          <label class="form-check-label small ms-1" for="prefAlerts">Show pop-up alerts</label></div></div>
+        <div class="col-md-6"><div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="prefSound" ${ALERTS.sound?'checked':''}
+            style="width:2.6em;height:1.35em"
+            onchange="LS.set('sound',this.checked);ALERTS.sound=this.checked;this.checked&&chime()">
+          <label class="form-check-label small ms-1" for="prefSound">Play a sound</label></div></div>
+      </div>
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-sm btn-soft" onclick="chime()">Test sound</button>
+        <button class="btn btn-sm btn-soft" onclick="pushAlert('Test alert','This is how an approval alert looks.');chime()">
+          Test alert</button>
+      </div>
+      <div class="small text-muted-2 mt-3">On a phone, install the app to the home screen first —
+        alerts are far more reliable from an installed app than a browser tab.</div>
+    </div>
+
+    <div class="card-x p-4">
+      <div class="fw-bold mb-1">Appearance</div>
+      <div class="small text-muted-2 mb-3">Applies to this device only.</div>
+      <div class="row g-2">
+        ${[['light','sun','Light'],['dark','moon-stars','Dark'],['auto','circle-half','Match system']]
+          .map(([k,i,t])=>`<div class="col-4">
+            <button class="btn w-100 py-3 ${theme===k?'btn-accent':'btn-light'}"
+              onclick="LS.set('theme','${k}');applyTheme('${k}');vAlertPrefs()">
+              <i class="bi bi-${i} d-block mb-1" style="font-size:19px"></i>
+              <span class="small">${t}</span></button></div>`).join('')}
+      </div>
+    </div>
+  </div>`);
 }
 
 /* ================================ AUDIT ================================ */
@@ -1995,13 +2530,6 @@ async function vAudit(){
 }
 
 /* ================================ NOTIFICATIONS ================================ */
-async function loadNotifCount(){
-  if(!S.token) return;
-  try{ const r=await api('getNotifications'); if(!r.ok) return;
-    S.notif=r.unread; const d=document.getElementById('notifDot');
-    d.textContent=r.unread; d.classList.toggle('hide', !r.unread);
-  }catch(e){}
-}
 async function vNotifications(){
   loading();
   const r=await api('getNotifications');
@@ -2107,7 +2635,7 @@ function vHelp(){
         <span class="badge-st st-cancel">Cancelled — withdrawn</span>
       </div>
     </div>
-    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.0</div>
+    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.2</div>
   </div>`);
 }
 

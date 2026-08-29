@@ -3,7 +3,7 @@
  * It deliberately never caches API responses: expense data must always be live,
  * and a stale approval status is worse than no status at all.
  */
-const CACHE = 'expense-shell-v11';
+const CACHE = 'expense-shell-v12';
 
 const SHELL = [
   './',

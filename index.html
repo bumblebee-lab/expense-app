@@ -342,7 +342,11 @@ input:-webkit-autofill:focus,input:-webkit-autofill:active{
 .login-status.on{opacity:1}
 .login-alert{background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.32);color:#FCA5A5;
   border-radius:13px;padding:10px 14px;font-size:13px;margin-bottom:16px}
-.login-foot{text-align:center;color:#6F82A6;font-size:12px;margin-top:22px}
+.login-foot{position:relative;text-align:center;color:#6F82A6;font-size:12px;margin-top:22px}
+.snd-toggle{position:absolute;right:0;top:-4px;width:30px;height:30px;border:0;border-radius:9px;
+  background:transparent;color:#5C6E92;font-size:14px;transition:all var(--t)}
+.snd-toggle:hover{background:rgba(255,255,255,.07);color:#B9C7E4}
+.snd-toggle.off{color:#4A5876}
 @media(max-width:400px){.login-card{padding:74px 22px 26px}.reset-pane{padding:52px 22px 26px}.mascot{width:172px;height:169px}}
 
 /* ============================ SHELL ============================ */
@@ -803,7 +807,11 @@ html,body{overflow-x:hidden;max-width:100%}
       </div>
 
       <div class="login-status" id="lgStatus">Signing you in…</div>
-      <div class="login-foot">Track. Approve. Clear.</div>
+      <div class="login-foot">
+        <button class="snd-toggle" id="sndBtn" onclick="toggleLoginSound()"
+                aria-label="Toggle sound"><i class="bi bi-volume-up"></i></button>
+        Track. Approve. Clear.
+      </div>
 
       <!-- ---- forgot password, slides over the sign-in form ---- -->
       <div class="reset-pane" id="resetPane" aria-hidden="true">
@@ -1082,7 +1090,15 @@ const PK = {
 /* ---- biometric login (mobile) ---- */
 const BIOMETRIC_MOBILE_ONLY = true;
 
+function wireLoginSounds(){
+  paintSoundBtn();
+  wireKeySound('lgUser','type');
+  wireKeySound('lgPass','pass');
+  wireKeySound('rsUser','type');
+}
+
 async function showPasskeyOption(){
+  wireLoginSounds();
   const row=document.getElementById('bioRow');
   if(!row) return;
   await PK.init();
@@ -1439,6 +1455,85 @@ function chime(kind){
       o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0+0.3);
     });
   }catch(e){}
+}
+
+/* ---- keystroke sounds ----
+   Short, quiet ticks generated in the browser, so there is no audio file to load
+   and no delay on the first keypress. Pitch shifts a little each time so a fast
+   typist does not hear the same tone repeating. */
+const KEYS = { last:0, seq:0 };
+function keyTick(kind){
+  if(!ALERTS.sound) return;
+  const now = performance.now();
+  if(now - KEYS.last < 28) return;              // ignore key repeat held down
+  KEYS.last = now;
+  try{
+    ALERTS.ctx = ALERTS.ctx || new (window.AudioContext||window.webkitAudioContext)();
+    const ctx = ALERTS.ctx;
+    if(ctx.state === 'suspended') ctx.resume();
+
+    // password keys sound lower and softer, as if muffled behind the paws
+    const base = kind==='pass' ? 320 : kind==='back' ? 240 : 520;
+    const vol  = kind==='pass' ? 0.045 : kind==='back' ? 0.05 : 0.055;
+    const drift = [0,3,-2,5,-4,2][KEYS.seq++ % 6];   // tiny melodic wander
+    const f = base * Math.pow(2, drift/48);
+
+    const o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+    o.type = kind==='pass' ? 'triangle' : 'sine';
+    o.frequency.setValueAtTime(f, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(f*0.82, ctx.currentTime+0.05);
+    lp.type='lowpass'; lp.frequency.value = kind==='pass' ? 900 : 2200;
+
+    g.gain.setValueAtTime(0, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(vol, ctx.currentTime+0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.06);
+
+    o.connect(lp); lp.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime+0.07);
+  }catch(e){}
+}
+
+/** A soft blip when a field is focused, so tapping in feels connected too. */
+function focusBlip(){
+  if(!ALERTS.sound) return;
+  try{
+    ALERTS.ctx = ALERTS.ctx || new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=ALERTS.ctx; if(ctx.state==='suspended') ctx.resume();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(660, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(880, ctx.currentTime+0.07);
+    g.gain.setValueAtTime(0, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0.05, ctx.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.14);
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.15);
+  }catch(e){}
+}
+
+/** Attach typing sounds to a field. Called for the login and reset inputs. */
+function wireKeySound(id, kind){
+  const el = document.getElementById(id);
+  if(!el || el.dataset.snd) return;
+  el.dataset.snd = '1';
+  el.addEventListener('keydown', e => {
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+    if(e.key === 'Enter') return;                       // the sign-in chime covers this
+    if(e.key === 'Backspace' || e.key === 'Delete') return keyTick('back');
+    if(e.key.length === 1) keyTick(kind);               // ignore Shift, arrows, Tab
+  });
+  el.addEventListener('focus', focusBlip);
+}
+
+function toggleLoginSound(){
+  ALERTS.sound = !ALERTS.sound;
+  LS.set('sound', ALERTS.sound);
+  paintSoundBtn();
+  if(ALERTS.sound) keyTick('type');           // a tick confirms it is back on
+}
+function paintSoundBtn(){
+  const b=document.getElementById('sndBtn'); if(!b) return;
+  b.classList.toggle('off', !ALERTS.sound);
+  b.innerHTML = `<i class="bi bi-volume-${ALERTS.sound?'up':'mute'}"></i>`;
+  b.title = ALERTS.sound ? 'Sound on' : 'Sound off';
 }
 
 async function enableDesktopAlerts(){
@@ -3558,7 +3653,7 @@ function vHelp(){
         <span class="badge-st st-cancel">Cancelled — withdrawn</span>
       </div>
     </div>
-    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.9</div>
+    <div class="text-center small text-muted-2 mt-4">Expense Management · version 3.0</div>
   </div>`);
 }
 

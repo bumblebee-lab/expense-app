@@ -24,6 +24,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 /* ============================ DESIGN TOKENS ============================ */
 :root{
@@ -210,6 +211,28 @@ input:-webkit-autofill:focus,input:-webkit-autofill:active{
 .cheek{opacity:.75;transition:opacity var(--t)}
 .mascot.sad .brow{transform:translateY(4px) rotate(var(--r,0deg))}
 .brow{transition:transform 200ms}
+
+/* ---- desktop passkey button ---- */
+.pk-desktop{width:100%;margin-top:14px;padding:12px;border-radius:15px;display:flex;
+  align-items:center;justify-content:center;gap:10px;font-size:14px;font-weight:650;
+  color:#C6D3EC;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);
+  transition:all var(--t)}
+.pk-desktop:hover{border-color:#3B82F6;color:#EAF1FF;background:rgba(59,130,246,.12)}
+.pk-desktop i{font-size:17px;color:#7FA9F0}
+.pk-desktop.busy{opacity:.7}
+.pk-desktop.busy i{animation:bioPulse 1s ease-in-out infinite}
+
+/* ---- one-time code input ---- */
+.otp-box{display:flex;gap:9px;justify-content:center;margin:4px 0 14px}
+.otp-box input{width:46px;height:56px;text-align:center;font-size:23px;font-weight:700;
+  color:#EAF1FF;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);
+  border-radius:13px;outline:none;transition:all var(--t);font-variant-numeric:tabular-nums}
+.otp-box input:focus{border-color:#3B82F6;background:rgba(59,130,246,.10);
+  box-shadow:0 0 0 4px rgba(59,130,246,.16);transform:translateY(-2px)}
+.otp-box input.filled{border-color:rgba(52,211,153,.5);background:rgba(16,185,129,.10)}
+.otp-timer{display:flex;align-items:center;gap:10px;justify-content:center;color:#7E90B4;font-size:11.5px}
+.otp-timer span.otp-bar{display:block;height:3px;width:118px;border-radius:3px;
+  background:linear-gradient(90deg,#34D399,#3B82F6);transition:width 1s linear}
 
 /* ---- biometric row (mobile only) ---- */
 .bio-row{display:flex;align-items:center;gap:12px;margin-top:16px;padding:11px 14px;
@@ -598,6 +621,71 @@ html,body{overflow-x:hidden;max-width:100%}
   .login-stage{padding-top:96px}
 }
 
+/* ---- rights screen ---- */
+.perm-group{margin-bottom:20px}
+.perm-group-t{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--slate);
+  font-weight:700;margin:0 0 8px}
+.perm-line{display:flex;align-items:center;gap:14px;padding:11px 13px;border-radius:13px;
+  border:1.5px solid var(--line);margin-bottom:7px;transition:all var(--t)}
+.perm-line.on{border-color:color-mix(in srgb,var(--accent-2) 40%,transparent);
+  background:var(--accent-soft)}
+.perm-tag{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  padding:2px 7px;border-radius:6px;background:var(--line-2);color:var(--slate)}
+.perm-tag.risk{background:var(--amber-50);color:#B45309}
+.row-item.active-user{background:var(--accent-soft)}
+
+/* ============================ GATES, LOCK, SIGN-OUT ============================ */
+.gate{position:fixed;inset:0;z-index:2600;display:grid;place-items:center;padding:20px;
+  background:rgba(8,13,26,.86);backdrop-filter:blur(16px);animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.gate-card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);
+  border-radius:24px;padding:30px 26px;box-shadow:0 30px 70px -25px rgba(0,0,0,.7);
+  animation:gateIn .32s cubic-bezier(.34,1.35,.5,1)}
+@keyframes gateIn{from{transform:translateY(18px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+.gate-ic{width:64px;height:64px;margin:0 auto 18px;border-radius:20px;display:grid;place-items:center;
+  font-size:28px;color:#fff;background:var(--accent-grad);box-shadow:var(--sh-3)}
+.gate-ic.lock{background:linear-gradient(135deg,#F59E0B,#D97706)}
+.gate-card h4{text-align:center;font-size:20px;margin-bottom:8px}
+.gate-card p{text-align:center}
+.perm-item{display:flex;align-items:center;gap:13px;padding:13px;border-radius:15px;
+  border:1.5px solid var(--line);margin-bottom:10px;transition:all var(--t)}
+.perm-item.ok{border-color:rgba(16,185,129,.45);background:var(--teal-50)}
+.perm-item.no{border-color:rgba(239,68,68,.45);background:var(--red-50)}
+.perm-ic{width:40px;height:40px;border-radius:12px;background:var(--accent-soft);color:var(--accent-2);
+  display:grid;place-items:center;font-size:18px;flex:none}
+.perm-item.ok .perm-ic{background:rgba(16,185,129,.18);color:#059669}
+.perm-item.no .perm-ic{background:rgba(239,68,68,.15);color:#DC2626}
+.perm-state{font-size:20px;color:var(--muted)}
+.perm-item.ok .perm-state{color:#10B981}
+.perm-item.no .perm-state{color:#EF4444}
+.perm-item.busy .perm-state{animation:bioPulse 1s ease-in-out infinite}
+
+/* sign-out: the figure walks back out through the door */
+.bye{position:fixed;inset:0;z-index:3200;display:grid;place-items:center;
+  background:radial-gradient(700px 400px at 50% 40%,#1B2C5E 0%,transparent 62%),
+             linear-gradient(165deg,#0C1428 0%,#080D1A 100%);animation:fadeIn .2s ease}
+.bye-inner{text-align:center}
+.bye-door{position:relative;width:150px;height:120px;margin:0 auto 26px}
+.bye-frame{position:absolute;left:50%;translate:-50% 0;top:0;width:76px;height:110px;border-radius:9px;
+  background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.28)}
+.bye-glow{position:absolute;left:50%;translate:-50% 0;top:4px;width:68px;height:102px;border-radius:7px;
+  background:radial-gradient(circle at 50% 45%,#fff,rgba(255,255,255,0) 72%);opacity:0;
+  transition:opacity .4s}
+.bye-panel{position:absolute;left:50%;translate:-50% 0;top:0;width:76px;height:110px;border-radius:9px;
+  background:linear-gradient(180deg,#DBEAFE,#93C5FD);transform-origin:left center;
+  transition:transform .5s cubic-bezier(.4,0,.2,1)}
+.bye-person{position:absolute;left:calc(50% - 9px);top:52px;width:19px;height:38px;
+  transition:transform .95s cubic-bezier(.4,0,.6,1),opacity .4s}
+.bye-person svg{width:100%;height:100%}
+.bye.go .bye-panel{transform:rotateY(76deg)}
+.bye.go .bye-glow{opacity:.9}
+.bye.go .bye-person{transform:translate(0,0) scale(.55);opacity:0}
+.bye.go .leg--front{animation:thighF .4s linear infinite}
+.bye.go .leg--back{animation:thighB .4s linear infinite}
+.bye-text{color:#93A4C4;font-size:14px;font-weight:600;letter-spacing:.02em}
+.bye-wave{font-size:34px;display:block;margin-bottom:10px;animation:wave 1s ease infinite}
+@keyframes wave{0%,100%{transform:rotate(0)}25%{transform:rotate(18deg)}75%{transform:rotate(-12deg)}}
+
 @media print{.sidebar,.topbar,.bnav,.no-print{display:none!important}.main{margin:0;padding:0}
   body{background:#fff}}
 
@@ -791,6 +879,12 @@ html,body{overflow-x:hidden;max-width:100%}
         </span>
       </button>
 
+      <!-- desktop passkey: Windows Hello / Touch ID -->
+      <button class="pk-desktop hide" id="pkDesktop" onclick="doPasskeyLogin()">
+        <i class="bi bi-shield-lock-fill"></i>
+        <span id="pkDesktopLabel">Sign in with Windows Hello</span>
+      </button>
+
       <!-- biometric unlock, phones and tablets only -->
       <div class="bio-row hide" id="bioRow">
         <button class="bio-tap" id="bioTap" onclick="bioTapped()">
@@ -811,6 +905,25 @@ html,body{overflow-x:hidden;max-width:100%}
         <button class="snd-toggle" id="sndBtn" onclick="toggleLoginSound()"
                 aria-label="Toggle sound"><i class="bi bi-volume-up"></i></button>
         Track. Approve. Clear.
+      </div>
+
+      <!-- ---- two-factor code, slides over the sign-in form ---- -->
+      <div class="reset-pane" id="totpPane" aria-hidden="true">
+        <button class="reset-back" onclick="closeTotp()" aria-label="Back to sign in">
+          <i class="bi bi-arrow-left"></i></button>
+        <div class="reset-ic"><i class="bi bi-shield-lock"></i></div>
+        <h2>Two-factor code</h2>
+        <p class="reset-sub">Open your authenticator app and enter the six digits shown
+          for <b id="totpWho">your account</b>.</p>
+        <div id="totpAlert" class="login-alert hide"></div>
+        <div class="otp-box" id="otpBox">
+          ${''}
+        </div>
+        <div class="otp-timer"><span class="otp-bar" id="otpBar"></span>
+          <small id="otpSecs">30s</small></div>
+        <button class="btn-doorbtn mt-3" id="totpBtn" onclick="submitTotp()">
+          <span class="doorbtn__label">Verify</span></button>
+        <button class="reset-link" onclick="closeTotp()">Use a different account</button>
       </div>
 
       <!-- ---- forgot password, slides over the sign-in form ---- -->
@@ -914,6 +1027,79 @@ html,body{overflow-x:hidden;max-width:100%}
   <main class="main" id="view"></main>
 
   <nav class="bnav" id="bnav"></nav>
+</div>
+
+<!-- ============ first-run permission gate ============ -->
+<div id="permGate" class="gate hide">
+  <div class="gate-card">
+    <div class="gate-ic"><i class="bi bi-shield-check"></i></div>
+    <h4>Two permissions before you start</h4>
+    <p class="text-muted-2 small mb-4">This app sends approval alerts and records where claims are
+      raised from. Both are required by your organisation.</p>
+
+    <div class="perm-item" id="permNotif">
+      <div class="perm-ic"><i class="bi bi-bell"></i></div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold">Notifications</div>
+        <div class="small text-muted-2">So you know the moment something needs approving</div>
+      </div>
+      <span class="perm-state"><i class="bi bi-dash-circle"></i></span>
+    </div>
+
+    <div class="perm-item" id="permLoc">
+      <div class="perm-ic"><i class="bi bi-geo-alt"></i></div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold">Location</div>
+        <div class="small text-muted-2">Recorded at sign-in and when a claim is raised</div>
+      </div>
+      <span class="perm-state"><i class="bi bi-dash-circle"></i></span>
+    </div>
+
+    <div id="gateAlert" class="alert alert-warning py-2 px-3 small mt-3 hide"></div>
+    <button class="btn btn-accent w-100 py-2 mt-3 fw-semibold" id="gateBtn" onclick="runPermGate()">
+      Allow both and continue</button>
+    <button class="btn btn-link w-100 text-muted-2 small mt-1" onclick="doLogout()">Sign out</button>
+  </div>
+</div>
+
+<!-- ============ idle lock ============ -->
+<div id="lockScreen" class="gate hide">
+  <div class="gate-card text-center">
+    <div class="gate-ic lock"><i class="bi bi-lock"></i></div>
+    <h4 id="lockName">Screen locked</h4>
+    <p class="text-muted-2 small mb-4">You were away for a while, so we locked the screen.
+      Your work is still here.</p>
+    <div id="lockAlert" class="alert alert-danger py-2 px-3 small hide"></div>
+    <div class="fld mb-2" style="text-align:left">
+      <input id="lockPass" type="password" placeholder=" " autocomplete="current-password">
+      <label for="lockPass">Password</label>
+    </div>
+    <button class="btn btn-accent w-100 py-2 fw-semibold" onclick="doUnlock()">Unlock</button>
+    <button class="btn btn-soft w-100 py-2 mt-2 hide" id="lockBio" onclick="doUnlockBio()">
+      <i class="bi bi-fingerprint me-1"></i>Use biometrics</button>
+    <button class="btn btn-link w-100 text-muted-2 small mt-1" onclick="doLogout()">Sign out instead</button>
+  </div>
+</div>
+
+<!-- ============ sign-out animation ============ -->
+<div id="byeScreen" class="bye hide">
+  <div class="bye-inner">
+    <div class="bye-door">
+      <span class="bye-frame"></span>
+      <span class="bye-glow"></span>
+      <span class="bye-panel"></span>
+      <span class="bye-person">
+        <svg class="stickman" viewBox="0 0 12 26" fill="none" stroke="#fff"
+             stroke-width="1.8" stroke-linecap="round">
+          <circle cx="6" cy="3.4" r="2.6" fill="#fff" stroke="none"/>
+          <path d="M6 6.4v7"/><path d="M6 8.4L2.6 11M6 8.4l3.4 2.6"/>
+          <path class="leg leg--back" d="M6 13.4L3 20"/>
+          <path class="leg leg--front" d="M6 13.4L9 20"/>
+        </svg>
+      </span>
+    </div>
+    <div class="bye-text" id="byeText">Signing you out…</div>
+  </div>
 </div>
 
 <div id="offlineBar" class="offline-bar hide"></div>
@@ -1087,8 +1273,264 @@ const PK = {
   forget(){ LS.del('pk'); }
 };
 
+/* ================================ TWO-FACTOR ================================ */
+const TOTP = { challenge:null, timer:null };
+
+function openTotp(challenge, who){
+  TOTP.challenge = challenge;
+  const card=document.getElementById('loginCard');
+  document.getElementById('totpWho').textContent = who || 'your account';
+  document.getElementById('totpAlert').classList.add('hide');
+  buildOtpBoxes();
+  card.classList.add('resetting');
+  document.getElementById('totpPane').setAttribute('aria-hidden','false');
+  document.getElementById('totpPane').style.zIndex = 6;
+  MASCOT.hide(false);
+  startOtpTimer();
+  setTimeout(()=>document.querySelector('#otpBox input')?.focus(), 320);
+}
+function closeTotp(){
+  TOTP.challenge=null;
+  clearInterval(TOTP.timer);
+  const pane=document.getElementById('totpPane');
+  pane.setAttribute('aria-hidden','true'); pane.style.zIndex='';
+  document.getElementById('loginCard').classList.remove('resetting');
+  document.getElementById('lgPass').value='';
+}
+
+/** Six separate boxes, with paste and backspace behaving the way people expect. */
+function buildOtpBoxes(){
+  const box=document.getElementById('otpBox');
+  box.innerHTML = Array.from({length:6},(_,i)=>
+    `<input inputmode="numeric" maxlength="1" autocomplete="one-time-code" data-i="${i}">`).join('');
+  const inputs=[...box.querySelectorAll('input')];
+  inputs.forEach((el,i)=>{
+    el.addEventListener('input',()=>{
+      el.value=el.value.replace(/\D/g,'');
+      el.classList.toggle('filled', !!el.value);
+      if(el.value){ keyTick('type'); if(i<5) inputs[i+1].focus(); }
+      if(inputs.every(x=>x.value)) submitTotp();
+    });
+    el.addEventListener('keydown',e=>{
+      if(e.key==='Backspace' && !el.value && i>0){ inputs[i-1].focus(); inputs[i-1].value='';
+        inputs[i-1].classList.remove('filled'); keyTick('back'); }
+      if(e.key==='Enter') submitTotp();
+    });
+    el.addEventListener('paste',e=>{
+      const d=(e.clipboardData.getData('text')||'').replace(/\D/g,'').slice(0,6);
+      if(!d) return;
+      e.preventDefault();
+      d.split('').forEach((ch,k)=>{ inputs[k].value=ch; inputs[k].classList.add('filled'); });
+      inputs[Math.min(d.length,5)].focus();
+      if(d.length===6) submitTotp();
+    });
+  });
+}
+function otpValue(){ return [...document.querySelectorAll('#otpBox input')].map(i=>i.value).join(''); }
+
+/** Codes roll every 30 seconds; the bar shows how long the current one lasts. */
+function startOtpTimer(){
+  clearInterval(TOTP.timer);
+  const tick=()=>{
+    const left = 30 - (Math.floor(Date.now()/1000) % 30);
+    const bar=document.getElementById('otpBar'), secs=document.getElementById('otpSecs');
+    if(!bar) return clearInterval(TOTP.timer);
+    bar.style.width = (left/30*118)+'px';
+    secs.textContent = left+'s';
+    bar.style.background = left<=5
+      ? 'linear-gradient(90deg,#F59E0B,#EF4444)' : 'linear-gradient(90deg,#34D399,#3B82F6)';
+  };
+  tick(); TOTP.timer=setInterval(tick,1000);
+}
+
+async function submitTotp(){
+  const code=otpValue();
+  if(code.length!==6) return;
+  const btn=document.getElementById('totpBtn'), al=document.getElementById('totpAlert');
+  btn.disabled=true; btn.querySelector('.doorbtn__label').textContent='Checking…';
+  al.classList.add('hide');
+  try{
+    const r=await api('loginTotp',{ challenge:TOTP.challenge, code,
+      agent:navigator.userAgent, location:await quietLocation() });
+    if(!r.ok){
+      al.textContent=r.message; al.classList.remove('hide');
+      buildOtpBoxes(); document.querySelector('#otpBox input').focus();
+      MASCOT.mood('sad'); setTimeout(()=>MASCOT.mood(null),1800);
+      return;
+    }
+    clearInterval(TOTP.timer);
+    S.token=r.token; S.user=r.user; S.perms=r.perms; S.settings=r.settings;
+    if(document.getElementById('lgRemember').checked) LS.set('token',r.token);
+    MASCOT.mood('happy'); chime('done');
+    closeTotp();
+    await startApp();
+  }catch(e){ al.textContent='Cannot reach the server.'; al.classList.remove('hide'); }
+  finally{ btn.disabled=false; btn.querySelector('.doorbtn__label').textContent='Verify'; }
+}
+
+/* ================================ PERMISSION GATE ================================ */
+/* Notifications and location are required from the second sign-in onward, so the first
+   visit is never blocked by a permission prompt the user was not expecting. */
+const GATE = { notif:false, loc:null };
+
+function gateNeeded(){
+  if(S.settings.RequireNotifications !== 'true' && S.settings.RequireLocation !== 'true') return false;
+  return !LS.get('permsDone_'+S.user.UserID);
+}
+function showPermGate(){
+  document.getElementById('permGate').classList.remove('hide');
+  paintPerm('permNotif', Notification?.permission==='granted');
+}
+function paintPerm(id, state){
+  const el=document.getElementById(id); if(!el) return;
+  el.classList.remove('ok','no','busy');
+  const ic=el.querySelector('.perm-state i');
+  if(state===true){ el.classList.add('ok'); ic.className='bi bi-check-circle-fill'; }
+  else if(state==='busy'){ el.classList.add('busy'); ic.className='bi bi-three-dots'; }
+  else if(state===false){ el.classList.add('no'); ic.className='bi bi-x-circle-fill'; }
+  else ic.className='bi bi-dash-circle';
+}
+
+function askLocation(){
+  return new Promise(resolve=>{
+    if(!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat:+p.coords.latitude.toFixed(5), lng:+p.coords.longitude.toFixed(5),
+                     place:'' }),
+      () => resolve(null),
+      { enableHighAccuracy:false, timeout:12000, maximumAge:600000 });
+  });
+}
+/** Used at sign-in: never blocks, returns null if the user has not granted it. */
+async function quietLocation(){
+  try{
+    if(!navigator.permissions) return null;
+    const st=await navigator.permissions.query({name:'geolocation'});
+    if(st.state!=='granted') return null;
+    return await askLocation();
+  }catch(e){ return null; }
+}
+
+async function runPermGate(){
+  const btn=document.getElementById('gateBtn'), al=document.getElementById('gateAlert');
+  btn.disabled=true; al.classList.add('hide');
+
+  if(S.settings.RequireNotifications==='true'){
+    paintPerm('permNotif','busy');
+    try{
+      if(Notification.permission==='default') await Notification.requestPermission();
+      GATE.notif = Notification.permission==='granted';
+    }catch(e){ GATE.notif=false; }
+    paintPerm('permNotif', GATE.notif);
+    if(GATE.notif){ ALERTS.on=true; LS.set('alerts',true); }
+  } else GATE.notif = true;
+
+  if(S.settings.RequireLocation==='true'){
+    paintPerm('permLoc','busy');
+    GATE.loc = await askLocation();
+    paintPerm('permLoc', !!GATE.loc);
+  } else GATE.loc = {};
+
+  btn.disabled=false;
+  if(GATE.notif && GATE.loc){
+    await api('recordPermissions',{ notifications:true, location:GATE.loc });
+    LS.set('permsDone_'+S.user.UserID, true);
+    document.getElementById('permGate').classList.add('hide');
+    chime('done');
+    toast('All set. Welcome in.','success');
+    return;
+  }
+  al.innerHTML = 'Both permissions are required. If a prompt did not appear, your browser has ' +
+    'already blocked it — open the padlock in the address bar, set Notifications and Location ' +
+    'to <b>Allow</b>, then reload.';
+  al.classList.remove('hide');
+}
+
+/* ================================ IDLE LOCK ================================ */
+/* Locks the screen after a few idle minutes. The session stays alive, so nothing in
+   progress is lost — this is a screen lock, not a sign-out. */
+const IDLE = { at:Date.now(), timer:null, locked:false, fails:0 };
+
+function idleStart(){
+  idleStop();
+  const mins = Number(S.settings.IdleLockMinutes || 3);
+  if(!mins) return;
+  ['mousemove','mousedown','keydown','touchstart','scroll','focus']
+    .forEach(ev => window.addEventListener(ev, idleBump, {passive:true}));
+  IDLE.timer = setInterval(()=>{
+    if(IDLE.locked || !S.token) return;
+    if(Date.now() - IDLE.at > mins*60000) lockScreen();
+  }, 5000);
+}
+function idleStop(){
+  clearInterval(IDLE.timer);
+  ['mousemove','mousedown','keydown','touchstart','scroll','focus']
+    .forEach(ev => window.removeEventListener(ev, idleBump));
+}
+function idleBump(){ IDLE.at = Date.now(); }
+
+function lockScreen(){
+  if(IDLE.locked) return;
+  IDLE.locked = true; IDLE.fails = 0;
+  document.getElementById('lockName').textContent =
+    (S.user?.Name ? S.user.Name.split(' ')[0]+', screen locked' : 'Screen locked');
+  document.getElementById('lockAlert').classList.add('hide');
+  document.getElementById('lockPass').value='';
+  document.getElementById('lockBio').classList.toggle('hide', !PK.has());
+  document.getElementById('lockScreen').classList.remove('hide');
+  setTimeout(()=>document.getElementById('lockPass').focus(), 200);
+}
+async function doUnlock(){
+  const al=document.getElementById('lockAlert'), pw=document.getElementById('lockPass').value;
+  if(!pw) return;
+  const r=await api('verifyPassword',{password:pw});
+  if(!r.ok){
+    IDLE.fails++;
+    al.textContent = IDLE.fails>=3
+      ? 'Still not right. One more try before you are signed out.' : r.message;
+    al.classList.remove('hide');
+    if(IDLE.fails>=4) return doLogout();
+    return;
+  }
+  unlockScreen();
+}
+async function doUnlockBio(){
+  try{ await PK.unlock(); unlockScreen(); }
+  catch(e){ toast('Biometric unlock failed. Use your password.','warn'); }
+}
+function unlockScreen(){
+  IDLE.locked=false; IDLE.at=Date.now();
+  document.getElementById('lockScreen').classList.add('hide');
+  chime();
+}
+
+/* ================================ SIGN-OUT ANIMATION ================================ */
+async function doLogout(){
+  const bye=document.getElementById('byeScreen');
+  const txt=document.getElementById('byeText');
+  document.getElementById('lockScreen').classList.add('hide');
+  document.getElementById('permGate').classList.add('hide');
+  IDLE.locked=false; idleStop();
+
+  bye.classList.remove('hide');
+  txt.textContent = 'See you, '+((S.user?.Name||'').split(' ')[0]||'')+'…';
+  await wait(80);
+  bye.classList.add('go');
+  chime('done');
+
+  try{ await api('logout'); }catch(e){}
+  await wait(900);
+  txt.innerHTML = '<span class="bye-wave">👋</span>Signed out safely';
+  await wait(700);
+
+  bye.classList.remove('go');
+  bye.classList.add('hide');
+  hardLogout();
+}
+
 /* ---- biometric login (mobile) ---- */
-const BIOMETRIC_MOBILE_ONLY = true;
+const BIOMETRIC_MOBILE_ONLY = true;   // the toggle row is phones/tablets only
+const PASSKEY_ON_DESKTOP    = true;   // desktops get their own Windows Hello / Touch ID button
 
 function wireLoginSounds(){
   paintSoundBtn();
@@ -1099,12 +1541,21 @@ function wireLoginSounds(){
 
 async function showPasskeyOption(){
   wireLoginSounds();
-  const row=document.getElementById('bioRow');
+  const row=document.getElementById('bioRow'), desk=document.getElementById('pkDesktop');
   if(!row) return;
   await PK.init();
 
-  // hidden entirely on desktop, and on any device without a biometric sensor
-  if(!PK.isMobile() || !PK.available){ row.classList.add('hide'); return; }
+  // desktops get their own button rather than the mobile toggle row
+  if(!PK.isMobile()){
+    row.classList.add('hide');
+    if(desk && PASSKEY_ON_DESKTOP && PK.available && PK.has()){
+      document.getElementById('pkDesktopLabel').textContent = 'Sign in with ' + PK.label().name;
+      desk.classList.remove('hide');
+    } else if(desk) desk.classList.add('hide');
+    return;
+  }
+  if(desk) desk.classList.add('hide');
+  if(!PK.available){ row.classList.add('hide'); return; }
 
   const lab=PK.label(), saved=LS.get('pk');
   const face=/iPhone|iPad|Macintosh/.test(navigator.userAgent);
@@ -1143,9 +1594,11 @@ async function bioToggle(ev){
 }
 
 async function doPasskeyLogin(){
-  const row=document.getElementById('bioRow'), al=document.getElementById('loginAlert');
-  row.classList.add('busy');
-  document.getElementById('bioLabel').textContent='Waiting for '+PK.label().name+'…';
+  const row=document.getElementById('bioRow'), desk=document.getElementById('pkDesktop'),
+        al=document.getElementById('loginAlert');
+  row.classList.add('busy'); desk?.classList.add('busy');
+  if(!row.classList.contains('hide'))
+    document.getElementById('bioLabel').textContent='Waiting for '+PK.label().name+'…';
   al.classList.add('hide'); MASCOT.mood(null);
   try{
     const r=await PK.unlock();
@@ -1155,7 +1608,7 @@ async function doPasskeyLogin(){
     await wait(300);
     await startApp();
   }catch(e){
-    row.classList.remove('busy');
+    row.classList.remove('busy'); desk?.classList.remove('busy');
     const cancelled=/cancel|abort|NotAllowed/i.test(e.name+e.message);
     al.textContent = cancelled ? 'Biometric check cancelled. Use your password instead.' : e.message;
     al.classList.remove('hide');
@@ -1338,7 +1791,14 @@ async function doLogin(){
   btn.classList.add('walking');
 
   try{
-    const r=await api('login',{username,password,agent:navigator.userAgent});
+    const r=await api('login',{username,password,agent:navigator.userAgent,
+                               location:await quietLocation()});
+    if(r.code==='TOTP_REQUIRED'){
+      btn.classList.remove('walking','dooropen','out');
+      btn.disabled=false; status.classList.remove('on');
+      openTotp(r.challenge, username);
+      return;
+    }
     if(!r.ok){ btn.classList.remove('walking'); return fail(r.message); }
 
     btn.classList.add('out');
@@ -1410,7 +1870,7 @@ function hardLogout(msg){
   showPasskeyOption();
   if(msg){ const al=document.getElementById('loginAlert'); al.textContent=msg; al.classList.remove('hide'); }
 }
-async function doLogout(){ try{ await api('logout'); }catch(e){} hardLogout(); }
+
 
 /* ================================ BOOT ================================ */
 /* ================================ THEME ================================ */
@@ -1647,6 +2107,8 @@ async function startApp(){
   setMode(LS.get('mode')||'company', true);
   loadNotifCount(); setInterval(loadNotifCount, 45000);
   syncQueue();
+  if(gateNeeded()) showPermGate();
+  idleStart();
 }
 
 /* ================================ NAV ================================ */
@@ -1669,6 +2131,7 @@ const NAV = () => {
   if(can('EXPENSE_VIEW_ALL')) n.push({k:'monitor', i:'speedometer2', t:'Approval monitor'});
   if(can('EXPENSE_EXPORT')) n.push({k:'reports', i:'bar-chart', t:'Reports'});
   if(can('USER_MANAGE')) n.push({k:'users', i:'people', t:'Users', sec:'Administration'});
+  if(can('USER_MANAGE')) n.push({k:'rights', i:'person-lock', t:'Rights & permissions'});
   if(can('WORKFLOW_MANAGE')) n.push({k:'workflow', i:'diagram-3', t:'Workflow builder'});
   if(can('MASTER_MANAGE')) n.push({k:'masters', i:'tags', t:'Categories & departments'});
   if(can('SETTINGS_MANAGE')) n.push({k:'settings', i:'gear', t:'Settings'});
@@ -1721,11 +2184,12 @@ function go(view){
   const V={dashboard:vDashboard, expenses:vExpenses, personal:vPersonal, add:vAdd, approvals:vApprovals,
            payments:vPayments, reports:vReports, users:vUsers, masters:vMasters, settings:vSettings,
            audit:vAudit, notifications:vNotifications, profile:vProfile, help:vHelp,
-           clearance:vClearance, monitor:vMonitor, workflow:vWorkflow};
+           clearance:vClearance, monitor:vMonitor, workflow:vWorkflow, rights:vRights};
   const titles={dashboard:S.mode==='personal'?'Personal overview':'Company dashboard', expenses:'Company expenses',
     personal:'My personal expenses', add:S.mode==='personal'?'Add personal expense':'Add company expense',
     approvals:'My approvals', clearance:'Clearance centre', monitor:'Approval monitor',
-    workflow:'Workflow builder', payments:'Payment centre', reports:'Reports', users:'Users',
+    workflow:'Workflow builder', rights:'Rights & permissions',
+    payments:'Payment centre', reports:'Reports', users:'Users',
     masters:'Categories & departments', settings:'Settings', audit:'Audit log',
     notifications:'Notifications', profile:'My profile', help:'Help'};
   document.getElementById('pageTitle').textContent=titles[view]||'';
@@ -3167,6 +3631,8 @@ async function vUsers(){
         <td class="text-end"><div class="btn-group btn-group-sm">
           <button class="btn btn-light" onclick='userDlg(${JSON.stringify(u).replace(/'/g,"&#39;")})' title="Edit"><i class="bi bi-pencil"></i></button>
           <button class="btn btn-light" onclick="resetPw('${u.UserID}')" title="Reset password"><i class="bi bi-key"></i></button>
+          <button class="btn btn-light" onclick="go('rights');S.rightsUser='${u.UserID}'" title="Rights"><i class="bi bi-person-lock"></i></button>
+          <button class="btn btn-light" onclick="resetTotp('${u.UserID}','${esc(u.Name)}')" title="Reset two-factor"><i class="bi bi-shield-slash"></i></button>
           <button class="btn btn-light" onclick="toggleUser('${u.UserID}','${u.Status}')" title="${u.Status==='Active'?'Disable':'Activate'}">
             <i class="bi bi-${u.Status==='Active'?'toggle-on text-success':'toggle-off'}"></i></button>
         </div></td></tr>`).join('')}</tbody></table></div>
@@ -3219,12 +3685,169 @@ async function resetPw(id){
   const r=await api('resetUserPassword',{UserID:id,password:p});
   toast(r.ok?'Password reset. Share it with the user securely.':r.message, r.ok?'success':'danger');
 }
+async function resetTotp(id,name){
+  if(!confirm('Reset two-factor for '+name+'?\n\nThey will be asked to set it up again next time.')) return;
+  const r=await api('resetUserTotp',{UserID:id});
+  toast(r.ok?'Two-factor reset. Tell them to set it up again.':r.message, r.ok?'success':'danger');
+}
 async function toggleUser(id,status){
   const next=status==='Active'?'Inactive':'Active';
   if(!confirm((next==='Active'?'Activate':'Disable')+' this user?')) return;
   const r=await api('setUserStatus',{UserID:id,status:next});
   if(!r.ok) return toast(r.message,'danger');
   toast('User '+(next==='Active'?'activated':'disabled')+'.'); vUsers();
+}
+
+/* ================================ RIGHTS & PERMISSIONS ================================ */
+const PERM_GROUPS = {
+  'Expenses':      ['EXPENSE_CREATE','EXPENSE_VIEW_OWN','EXPENSE_VIEW_TEAM','EXPENSE_VIEW_ALL','EXPENSE_EDIT_ANY'],
+  'Approval':      ['EXPENSE_APPROVE','EXPENSE_REJECT','EXPENSE_ASSIGN_APPROVER','EXPENSE_REASSIGN_APPROVER','EXPENSE_FINAL_APPROVAL'],
+  'Clearance & payment':['EXPENSE_CLEAR','EXPENSE_ASSIGN_CLEARANCE','EXPENSE_PAYMENT'],
+  'Private data':  ['EXPENSE_VIEW_PERSONAL'],
+  'Reporting':     ['EXPENSE_EXPORT'],
+  'Administration':['USER_MANAGE','WORKFLOW_MANAGE','MASTER_MANAGE','SETTINGS_MANAGE','AUDIT_VIEW']
+};
+const PERM_HELP = {
+  EXPENSE_CREATE:'Raise company expense claims',
+  EXPENSE_VIEW_OWN:'See their own claims',
+  EXPENSE_VIEW_TEAM:'See claims from people who report to them',
+  EXPENSE_VIEW_ALL:'See every claim in the company',
+  EXPENSE_EDIT_ANY:'Edit any claim, at any stage',
+  EXPENSE_APPROVE:'Approve claims assigned to them',
+  EXPENSE_REJECT:'Reject claims assigned to them',
+  EXPENSE_ASSIGN_APPROVER:'Choose who approves their own claim',
+  EXPENSE_REASSIGN_APPROVER:'Hand a task to somebody else',
+  EXPENSE_FINAL_APPROVAL:'Give senior sign-off on large claims',
+  EXPENSE_CLEAR:'Confirm and clear an approved claim',
+  EXPENSE_ASSIGN_CLEARANCE:'Choose who clears a claim',
+  EXPENSE_PAYMENT:'Record payments and close claims',
+  EXPENSE_VIEW_PERSONAL:"Read other people's private personal expenses",
+  EXPENSE_EXPORT:'Run reports and export to Excel or PDF',
+  USER_MANAGE:'Add, edit, disable users and reset passwords',
+  WORKFLOW_MANAGE:'Change the approval workflow',
+  MASTER_MANAGE:'Manage categories, departments and branches',
+  SETTINGS_MANAGE:'Change system settings and restore backups',
+  AUDIT_VIEW:'Read the audit log'
+};
+const PERM_RISK = ['EXPENSE_VIEW_PERSONAL','EXPENSE_EDIT_ANY','USER_MANAGE','SETTINGS_MANAGE','EXPENSE_PAYMENT'];
+
+async function vRights(){
+  loading();
+  const r=await api('getPermissionMatrix');
+  if(!r.ok) return setView(alertBox(r.message));
+  S.matrix=r;
+  const uid=S.rightsUser || r.users[0]?.UserID;
+  renderRights(uid);
+}
+
+function renderRights(uid){
+  S.rightsUser=uid;
+  const m=S.matrix, u=m.users.find(x=>x.UserID===uid)||m.users[0];
+  if(!u) return setView(emptyBox('No users','Add a user first.'));
+  const base=m.roles[u.Role]||[];
+  const extra=String(u.ExtraPerms||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const denied=String(u.DeniedPerms||'').split(',').map(s=>s.trim()).filter(Boolean);
+
+  const row=p=>{
+    const fromRole=base.includes(p), on=(fromRole||extra.includes(p)) && !denied.includes(p);
+    const risky=PERM_RISK.includes(p);
+    return `<div class="perm-line ${on?'on':''}">
+      <div class="flex-grow-1 min-w-0">
+        <div class="d-flex align-items-center gap-2">
+          <span class="small fw-semibold">${esc(p.replace(/_/g,' ').toLowerCase()
+            .replace(/^./,c=>c.toUpperCase()))}</span>
+          ${fromRole?'<span class="perm-tag">from role</span>':''}
+          ${risky?'<span class="perm-tag risk">sensitive</span>':''}
+        </div>
+        <div class="small text-muted-2">${esc(PERM_HELP[p]||p)}</div>
+      </div>
+      <div class="form-check form-switch m-0">
+        <input class="form-check-input" type="checkbox" data-perm="${esc(p)}"
+          ${on?'checked':''} style="width:2.5em;height:1.3em"
+          onchange="this.closest('.perm-line').classList.toggle('on',this.checked)">
+      </div></div>`;
+  };
+
+  setView(`
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <div class="card-x">
+        <div class="p-3 border-bottom">
+          <div class="fw-bold">People</div>
+          <input class="form-control form-control-sm mt-2" placeholder="Search…"
+            oninput="filterRightsUsers(this.value)">
+        </div>
+        <div id="rightsUsers" style="max-height:62vh;overflow:auto">
+          ${m.users.map(x=>`<div class="row-item ${x.UserID===uid?'active-user':''}"
+             data-name="${esc((x.Name+' '+x.Role).toLowerCase())}"
+             onclick="renderRights('${esc(x.UserID)}')">
+            <div class="side-av" style="background:var(--accent-soft);color:var(--accent-2)">${
+              esc((x.Name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase())}</div>
+            <div class="flex-grow-1 min-w-0">
+              <div class="small fw-semibold text-truncate">${esc(x.Name)}</div>
+              <div class="small text-muted-2">${esc(x.Role)} · ${x.effective.length} rights</div>
+            </div>
+            ${x.UserID===uid?'<i class="bi bi-chevron-right" style="color:var(--accent-2)"></i>':''}
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card-x p-3 p-lg-4">
+        <div class="d-flex flex-wrap gap-2 justify-content-between align-items-start mb-3">
+          <div>
+            <div class="fw-bold" style="font-size:17px">${esc(u.Name)}</div>
+            <div class="small text-muted-2">Role <b>${esc(u.Role)}</b> grants
+              ${base.length} rights by default</div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-light" onclick="resetRights()">Reset to role</button>
+            <button class="btn btn-sm btn-accent" onclick="saveRights()">
+              <i class="bi bi-check2 me-1"></i>Save</button>
+          </div>
+        </div>
+        <div class="alert alert-info py-2 px-3 small">
+          <i class="bi bi-info-circle me-1"></i>Switching one off that came from the role
+          removes it for this person only. Switching on an extra grants it to them alone.
+        </div>
+        ${Object.entries(PERM_GROUPS).map(([g,list])=>`
+          <div class="perm-group">
+            <div class="perm-group-t">${esc(g)}</div>
+            ${list.map(row).join('')}
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`);
+}
+
+function filterRightsUsers(q){
+  q=(q||'').toLowerCase();
+  document.querySelectorAll('#rightsUsers .row-item').forEach(el=>{
+    el.classList.toggle('hide', !!q && !el.dataset.name.includes(q));
+  });
+}
+function resetRights(){
+  const m=S.matrix, u=m.users.find(x=>x.UserID===S.rightsUser), base=m.roles[u.Role]||[];
+  document.querySelectorAll('[data-perm]').forEach(el=>{
+    el.checked = base.includes(el.dataset.perm);
+    el.closest('.perm-line').classList.toggle('on', el.checked);
+  });
+  toast('Reset to the role defaults. Press Save to apply.','info');
+}
+async function saveRights(){
+  const m=S.matrix, u=m.users.find(x=>x.UserID===S.rightsUser), base=m.roles[u.Role]||[];
+  const extra=[], denied=[];
+  document.querySelectorAll('[data-perm]').forEach(el=>{
+    const p=el.dataset.perm, fromRole=base.includes(p);
+    if(el.checked && !fromRole) extra.push(p);
+    if(!el.checked && fromRole) denied.push(p);
+  });
+  const r=await api('setUserPermissions',{UserID:u.UserID, extra, denied});
+  if(!r.ok) return toast(r.message,'danger');
+  toast(`Rights saved for ${u.Name}.`);
+  chime('done');
+  vRights();
 }
 
 /* ================================ MASTERS ================================ */
@@ -3515,7 +4138,7 @@ async function markAll(){ await api('markNotificationRead',{all:true}); loadNoti
 /* ================================ PROFILE ================================ */
 function vProfile(){
   const u=S.user;
-  setTimeout(loadPasskeys, 60);
+  setTimeout(()=>{ loadPasskeys(); loadTotp(); }, 60);
   setView(`
   <div class="row g-3">
     <div class="col-lg-6"><div class="card-x p-4">
@@ -3539,6 +4162,13 @@ function vProfile(){
       <button class="btn btn-accent" onclick="changePw()">Update password</button>
     </div>
     <div class="card-x p-4 mt-3">
+      <h6 class="mb-1">Two-factor authentication</h6>
+      <div class="small text-muted-2 mb-3">A six-digit code from Google Authenticator, Authy or
+        any standard app. Works on the web app and your phone.</div>
+      <div id="totpBox"><div class="skel" style="height:44px"></div></div>
+    </div>
+
+    <div class="card-x p-4 mt-3">
       <h6 class="mb-1">Biometric login</h6>
       <div class="small text-muted-2 mb-3">Phones and tablets that can sign in with a fingerprint
         or face instead of a password. Remove any device you no longer use.</div>
@@ -3554,6 +4184,76 @@ function vProfile(){
     </div></div>
   </div>`);
 }
+/* ---- two-factor setup ---- */
+async function loadTotp(){
+  const box=document.getElementById('totpBox'); if(!box) return;
+  const r=await api('totpStatus');
+  if(!r.ok) return box.innerHTML=`<div class="small text-danger">${esc(r.message)}</div>`;
+  box.innerHTML = r.enabled
+    ? `<div class="d-flex align-items-center gap-3">
+         <div class="cat-ic" style="background:var(--teal-50);color:#047857"><i class="bi bi-shield-check"></i></div>
+         <div class="flex-grow-1"><div class="small fw-semibold">Two-factor is on</div>
+           <div class="small text-muted-2">A code is required every time you sign in</div></div>
+         <button class="btn btn-sm btn-link text-danger" onclick="disableTotp()">Turn off</button>
+       </div>`
+    : `<div class="d-flex align-items-center gap-3">
+         <div class="cat-ic"><i class="bi bi-shield-exclamation"></i></div>
+         <div class="flex-grow-1"><div class="small fw-semibold">Not set up</div>
+           <div class="small text-muted-2">Recommended for anyone who approves or pays claims</div></div>
+         <button class="btn btn-sm btn-accent" onclick="setupTotp()">Set up</button>
+       </div>`;
+}
+
+async function setupTotp(){
+  const r=await api('totpSetup');
+  if(!r.ok) return toast(r.message,'danger');
+  formModal('Set up your authenticator', `
+    <ol class="small ps-3 mb-3" style="color:var(--text-2)">
+      <li class="mb-1">Open Google Authenticator, Authy or your password manager.</li>
+      <li class="mb-1">Tap add, then scan this square.</li>
+      <li>Type the six digits it shows below.</li>
+    </ol>
+    <div class="text-center">
+      <div id="qrHere" class="d-inline-block p-3 bg-white rounded-3"></div>
+    </div>
+    <div class="text-center small text-muted-2 mt-2">Cannot scan? Enter this key by hand:</div>
+    <div class="text-center my-2">
+      <code class="user-select-all d-inline-block px-3 py-2 rounded"
+        style="background:var(--bg-2);letter-spacing:.12em;font-size:13px">${esc(r.secret)}</code>
+    </div>
+    <label class="form-label small fw-semibold mt-2">Six-digit code from the app</label>
+    <input id="totpConfirm" class="form-control text-center" inputmode="numeric" maxlength="6"
+      placeholder="000000" style="letter-spacing:.5em;font-size:20px;font-weight:700">`,
+    async ()=>{
+      const code=val('totpConfirm').replace(/\D/g,'');
+      if(code.length!==6){ toast('Enter all six digits.','warn'); return false; }
+      const v=await api('totpEnable',{code});
+      if(!v.ok){ toast(v.message,'danger'); return false; }
+      toast('Two-factor is on. You will need a code next time you sign in.','success');
+      chime('done'); loadTotp(); return true;
+    },'Turn on');
+
+  setTimeout(()=>{
+    const el=document.getElementById('qrHere');
+    if(el && window.QRCode) new QRCode(el,{ text:r.uri, width:172, height:172,
+      colorDark:'#0F172A', colorLight:'#FFFFFF', correctLevel:QRCode.CorrectLevel.M });
+    else if(el) el.innerHTML='<div class="small text-muted-2 p-3">Use the key below instead.</div>';
+  },250);
+}
+
+async function disableTotp(){
+  formModal('Turn off two-factor', `
+    <div class="alert alert-warning py-2 px-3 small">
+      Your account will be protected by a password alone.</div>
+    <label class="form-label small fw-semibold">Confirm your password</label>
+    <input id="totpPw" type="password" class="form-control">`,
+    async ()=>{
+      const r=await api('totpDisable',{password:val('totpPw')});
+      if(!r.ok){ toast(r.message,'danger'); return false; }
+      toast('Two-factor turned off.','info'); loadTotp(); return true;
+    },'Turn off');
+}
+
 async function loadPasskeys(){
   const box=document.getElementById('pkList'); if(!box) return;
   await PK.init();
@@ -3575,7 +4275,7 @@ async function loadPasskeys(){
     : `<div class="small text-muted-2">No trusted devices yet.</div>`;
 
   const add=document.getElementById('pkAddBtn');
-  if(!PK.isMobile()){
+  if(!PK.isMobile() && !PASSKEY_ON_DESKTOP){
     add.disabled=true;
     add.innerHTML='<i class="bi bi-phone me-1"></i>Available on phones and tablets only';
   } else if(!PK.available){
@@ -3653,7 +4353,7 @@ function vHelp(){
         <span class="badge-st st-cancel">Cancelled — withdrawn</span>
       </div>
     </div>
-    <div class="text-center small text-muted-2 mt-4">Expense Management · version 3.0</div>
+    <div class="text-center small text-muted-2 mt-4">Expense Management · version 3.1</div>
   </div>`);
 }
 

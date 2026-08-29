@@ -211,28 +211,29 @@ input:-webkit-autofill:focus,input:-webkit-autofill:active{
 .mascot.sad .brow{transform:translateY(4px) rotate(var(--r,0deg))}
 .brow{transition:transform 200ms}
 
-/* ---- passkey unlock ---- */
-.pk-unlock{margin-bottom:6px}
-.pk-btn{width:100%;display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:16px;
-  background:linear-gradient(135deg,rgba(16,185,129,.18),rgba(16,185,129,.07));
-  border:1.5px solid rgba(52,211,153,.34);color:#EAF1FF;text-align:left;
+/* ---- biometric row (mobile only) ---- */
+.bio-row{display:flex;align-items:center;gap:12px;margin-top:16px;padding:11px 14px;
+  border-radius:16px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.10);
   transition:all var(--t)}
-.pk-btn:hover{border-color:#34D399;background:linear-gradient(135deg,rgba(16,185,129,.28),rgba(16,185,129,.12));
-  transform:translateY(-1px)}
-.pk-btn:active{transform:translateY(0)}
-.pk-ic{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none;
-  background:rgba(52,211,153,.2);color:#6EE7B7;font-size:21px}
-.pk-btn.busy .pk-ic{animation:pkPulse 1.1s ease-in-out infinite}
-@keyframes pkPulse{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}
-  50%{box-shadow:0 0 0 9px rgba(52,211,153,0)}}
-.pk-txt{flex:1;min-width:0}
-.pk-txt b{display:block;font-size:14.5px;font-weight:650}
-.pk-txt small{display:block;color:#93A4C4;font-size:11.5px;margin-top:1px}
-.pk-go{color:#6E82A6;font-size:14px}
-.pk-or{display:flex;align-items:center;gap:12px;margin:18px 0 14px;color:#6E82A6;font-size:11.5px}
-.pk-or:before,.pk-or:after{content:"";flex:1;height:1px;background:rgba(255,255,255,.1)}
+.bio-row.on{background:rgba(16,185,129,.10);border-color:rgba(52,211,153,.34)}
+.bio-tap{flex:1;display:flex;align-items:center;gap:11px;background:none;border:0;padding:0;
+  color:#C6D3EC;text-align:left;min-width:0}
+.bio-icons{display:flex;gap:7px;color:#8FA2C4;font-size:19px;flex:none;transition:color var(--t)}
+.bio-row.on .bio-icons{color:#6EE7B7}
+.bio-label{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bio-row.busy .bio-icons{animation:bioPulse 1.05s ease-in-out infinite}
+@keyframes bioPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.9)}}
+.bio-switch{width:52px;height:30px;border-radius:15px;border:0;flex:none;position:relative;
+  background:rgba(255,255,255,.14);transition:background var(--t);padding:0;cursor:pointer}
+.bio-row.on .bio-switch{background:#10B981}
+.bio-knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;
+  background:#fff;display:grid;place-items:center;color:#10B981;font-size:13px;
+  transition:transform 220ms cubic-bezier(.34,1.4,.5,1);box-shadow:0 2px 5px rgba(0,0,0,.3)}
+.bio-knob i{opacity:0;transition:opacity 160ms}
+.bio-row.on .bio-knob{transform:translateX(22px)}
+.bio-row.on .bio-knob i{opacity:1}
 
-/* ---- create passkey prompt ---- */
+/* ---- biometric prompt ---- */
 .pk-modal .modal-content{border-radius:24px;border:1px solid var(--line);text-align:center}
 .pk-hero{width:74px;height:74px;margin:6px auto 18px;border-radius:24px;display:grid;place-items:center;
   font-size:33px;color:#fff;background:var(--accent-grad);box-shadow:var(--sh-3);
@@ -767,15 +768,6 @@ html,body{overflow-x:hidden;max-width:100%}
         <a href="#" onclick="forgotPw();return false">Forgot password?</a>
       </div>
 
-      <div class="pk-unlock hide" id="pkUnlock">
-        <button class="pk-btn" onclick="doPasskeyLogin()">
-          <span class="pk-ic"><i class="bi bi-fingerprint" id="pkIcon"></i></span>
-          <span class="pk-txt"><b id="pkName">Unlock</b><small id="pkWho"></small></span>
-          <i class="bi bi-chevron-right pk-go"></i>
-        </button>
-        <div class="pk-or"><span>or use your password</span></div>
-      </div>
-
       <button class="btn-doorbtn" id="lgBtn" onclick="doLogin()">
         <span class="doorbtn__label">Sign in</span>
         <span class="dooric">
@@ -794,6 +786,21 @@ html,body{overflow-x:hidden;max-width:100%}
           <span class="dooric__panel"></span>
         </span>
       </button>
+
+      <!-- biometric unlock, phones and tablets only -->
+      <div class="bio-row hide" id="bioRow">
+        <button class="bio-tap" id="bioTap" onclick="bioTapped()">
+          <span class="bio-icons">
+            <i class="bi bi-fingerprint"></i>
+            <i class="bi bi-person-bounding-box" id="bioFaceIcon"></i>
+          </span>
+          <span class="bio-label" id="bioLabel">Biometric Login</span>
+        </button>
+        <button class="bio-switch" id="bioSwitch" role="switch" aria-checked="false"
+                onclick="bioToggle(event)" aria-label="Enable biometric login">
+          <span class="bio-knob"><i class="bi bi-check-lg"></i></span>
+        </button>
+      </div>
 
       <div class="login-status" id="lgStatus">Signing you in…</div>
       <div class="login-foot">Track. Approve. Clear.</div>
@@ -990,6 +997,17 @@ const PK = {
     }catch(e){ this.available = false; }
   },
 
+  /** Biometric sign-in is offered on phones and tablets only.
+      Flip BIOMETRIC_MOBILE_ONLY to false to offer Windows Hello and Touch ID on desktops too. */
+  isMobile(){
+    if(!BIOMETRIC_MOBILE_ONLY) return true;
+    const ua=navigator.userAgent;
+    if(/iPhone|iPad|iPod|Android|Mobile|Tablet/i.test(ua)) return true;
+    // iPads on recent iOS report as Mac, so check for a touch screen as well
+    if(/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return true;
+    return false;
+  },
+
   /** What the current device calls its biometric unlock, so the label feels native. */
   label(){
     const ua = navigator.userAgent;
@@ -1061,68 +1079,103 @@ const PK = {
   forget(){ LS.del('pk'); }
 };
 
-/* ---- passkey flows on the login screen ---- */
+/* ---- biometric login (mobile) ---- */
+const BIOMETRIC_MOBILE_ONLY = true;
+
 async function showPasskeyOption(){
+  const row=document.getElementById('bioRow');
+  if(!row) return;
   await PK.init();
-  const box=document.getElementById('pkUnlock');
-  if(!box || !PK.available || !PK.has()) return;
-  const saved=LS.get('pk'), lab=PK.label();
-  document.getElementById('pkIcon').className =
-    'bi bi-'+(lab.icon==='apple'?'person-badge':lab.icon==='windows'?'windows':
-              lab.icon==='fingerprint'?'fingerprint':'shield-lock');
-  document.getElementById('pkName').textContent='Unlock with '+lab.name;
-  document.getElementById('pkWho').textContent=saved.name?('Signed in as '+saved.name):'';
-  box.classList.remove('hide');
+
+  // hidden entirely on desktop, and on any device without a biometric sensor
+  if(!PK.isMobile() || !PK.available){ row.classList.add('hide'); return; }
+
+  const lab=PK.label(), saved=LS.get('pk');
+  const face=/iPhone|iPad|Macintosh/.test(navigator.userAgent);
+  document.getElementById('bioFaceIcon').className =
+    'bi bi-' + (face ? 'person-bounding-box' : 'person-badge');
+  document.getElementById('bioLabel').textContent =
+    PK.has() ? ('Sign in with ' + lab.name) : 'Biometric Login';
+  row.classList.toggle('on', PK.has());
+  document.getElementById('bioSwitch').setAttribute('aria-checked', PK.has()?'true':'false');
+  document.getElementById('bioTap').title = PK.has() ? 'Tap to unlock' : '';
+  row.classList.remove('hide');
+  if(saved && saved.name && PK.has())
+    document.getElementById('bioLabel').textContent = 'Sign in as ' + saved.name.split(' ')[0];
+}
+
+/** Tapping the row unlocks. Tapping the switch turns the feature on or off. */
+function bioTapped(){
+  if(PK.has()) return doPasskeyLogin();
+  toast('Sign in with your password once, then you can turn this on.','info');
+  document.getElementById('lgUser').focus();
+}
+
+async function bioToggle(ev){
+  ev.stopPropagation();
+  if(PK.has()){
+    if(!confirm('Turn off biometric login on this device?\n\nYou will need your password next time.')) return;
+    const saved=LS.get('pk');
+    try{ await api('revokePasskey',{credentialId:saved.id}); }catch(e){}
+    PK.forget();
+    showPasskeyOption();
+    toast('Biometric login turned off.','info');
+  } else {
+    toast('Sign in with your password first — we will offer to turn this on straight after.','info');
+    document.getElementById('lgUser').focus();
+  }
 }
 
 async function doPasskeyLogin(){
-  const btn=document.querySelector('.pk-btn'), al=document.getElementById('loginAlert');
-  btn.classList.add('busy'); al.classList.add('hide');
-  MASCOT.mood(null);
+  const row=document.getElementById('bioRow'), al=document.getElementById('loginAlert');
+  row.classList.add('busy');
+  document.getElementById('bioLabel').textContent='Waiting for '+PK.label().name+'…';
+  al.classList.add('hide'); MASCOT.mood(null);
   try{
     const r=await PK.unlock();
     S.token=r.token; S.user=r.user; S.perms=r.perms; S.settings=r.settings;
     LS.set('token',r.token);
     MASCOT.mood('happy'); chime('done');
-    await wait(320);
+    await wait(300);
     await startApp();
   }catch(e){
-    btn.classList.remove('busy');
-    const msg=/cancel|abort|NotAllowed/i.test(e.name+e.message)
-      ? 'Unlock cancelled. Use your password instead.' : e.message;
-    al.textContent=msg; al.classList.remove('hide');
+    row.classList.remove('busy');
+    const cancelled=/cancel|abort|NotAllowed/i.test(e.name+e.message);
+    al.textContent = cancelled ? 'Biometric check cancelled. Use your password instead.' : e.message;
+    al.classList.remove('hide');
     MASCOT.mood('sad'); setTimeout(()=>MASCOT.mood(null),2000);
-    if(!PK.has()) document.getElementById('pkUnlock').classList.add('hide');
+    showPasskeyOption();
   }
 }
 
-/** Offered once after a password sign-in, unless the user has said no before. */
+/** Offered once after a password sign-in, on mobile only. */
 async function offerPasskey(){
   await PK.init();
-  if(!PK.available || PK.has() || LS.get('pkSkipped')) return;
+  if(!PK.isMobile() || !PK.available || PK.has() || LS.get('pkSkipped')) return;
   const lab=PK.label();
   document.getElementById('pkModalIcon').className =
-    'bi bi-'+(lab.icon==='fingerprint'?'fingerprint':lab.icon==='windows'?'windows':'person-badge');
-  document.getElementById('pkModalTitle').textContent =
-    lab.icon==='apple' ? 'Set up '+lab.name+'?' : 'Create passkey?';
+    'bi bi-' + (lab.icon==='fingerprint' ? 'fingerprint' : 'person-bounding-box');
+  document.getElementById('pkModalTitle').textContent = 'Turn on biometric login?';
   document.getElementById('pkModalText').textContent =
-    'Use '+lab.name+' for faster, more secure sign-in on this device. '+
-    'You can skip and set it up later from your profile.';
-  document.getElementById('pkModalDevice').textContent=PK.deviceName();
+    'Use ' + lab.name + ' to sign in next time instead of typing your password. ' +
+    'You can turn it off at any point from your profile.';
+  document.getElementById('pkModalDevice').textContent = PK.deviceName();
+  document.getElementById('pkCreateBtn').textContent = 'Enable ' + lab.name;
   new bootstrap.Modal('#mPasskey').show();
 }
 async function createPasskey(){
-  const btn=document.getElementById('pkCreateBtn');
-  btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Waiting for your device';
+  const btn=document.getElementById('pkCreateBtn'), lab=PK.label();
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Waiting for your device';
   try{
     await PK.register();
     bootstrap.Modal.getInstance('#mPasskey')?.hide();
-    toast('Passkey created. Next time just '+PK.label().name+'.','success');
+    toast('Biometric login is on. Next time just use '+lab.name+'.','success');
     chime('done');
   }catch(e){
     toast(/cancel|abort|NotAllowed/i.test(e.name+e.message)
-      ? 'Setup cancelled.' : (e.message||'Could not create the passkey.'),'warn');
-  }finally{ btn.disabled=false; btn.textContent='Create passkey'; }
+      ? 'Setup cancelled.' : (e.message||'Could not turn it on.'),'warn');
+  }finally{ btn.disabled=false; btn.textContent='Enable '+lab.name; }
 }
 function skipPasskey(){
   LS.set('pkSkipped',true);
@@ -3391,12 +3444,12 @@ function vProfile(){
       <button class="btn btn-accent" onclick="changePw()">Update password</button>
     </div>
     <div class="card-x p-4 mt-3">
-      <h6 class="mb-1">Trusted devices</h6>
-      <div class="small text-muted-2 mb-3">Devices that can unlock with a fingerprint or face.
-        Remove any you no longer use.</div>
+      <h6 class="mb-1">Biometric login</h6>
+      <div class="small text-muted-2 mb-3">Phones and tablets that can sign in with a fingerprint
+        or face instead of a password. Remove any device you no longer use.</div>
       <div id="pkList"><div class="skel" style="height:56px"></div></div>
       <button class="btn btn-soft btn-sm mt-3" id="pkAddBtn" onclick="addPasskeyFromProfile()">
-        <i class="bi bi-plus-lg me-1"></i>Set up this device</button>
+        <i class="bi bi-fingerprint me-1"></i>Turn on for this device</button>
     </div>
 
     <div class="card-x p-4 mt-3">
@@ -3427,19 +3480,25 @@ async function loadPasskeys(){
     : `<div class="small text-muted-2">No trusted devices yet.</div>`;
 
   const add=document.getElementById('pkAddBtn');
-  if(!PK.available){ add.disabled=true;
-    add.innerHTML='<i class="bi bi-info-circle me-1"></i>This device has no biometric unlock'; }
-  else if(PK.has()){ add.classList.add('hide'); }
+  if(!PK.isMobile()){
+    add.disabled=true;
+    add.innerHTML='<i class="bi bi-phone me-1"></i>Available on phones and tablets only';
+  } else if(!PK.available){
+    add.disabled=true;
+    add.innerHTML='<i class="bi bi-info-circle me-1"></i>No biometric sensor on this device';
+  } else if(PK.has()){
+    add.classList.add('hide');
+  }
 }
 async function addPasskeyFromProfile(){
   const btn=document.getElementById('pkAddBtn');
   btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Waiting for your device';
   try{ await PK.register(); toast('This device is now trusted.','success'); chime('done'); loadPasskeys(); }
   catch(e){ toast(/cancel|abort|NotAllowed/i.test(e.name+e.message)?'Setup cancelled.':e.message,'warn'); }
-  finally{ btn.disabled=false; btn.innerHTML='<i class="bi bi-plus-lg me-1"></i>Set up this device'; }
+  finally{ btn.disabled=false; btn.innerHTML='<i class="bi bi-fingerprint me-1"></i>Turn on for this device'; }
 }
 async function revokePasskey(id){
-  if(!confirm('Remove this device? It will need a password to sign in again.')) return;
+  if(!confirm('Remove this device?\n\nIt will need a password to sign in again.')) return;
   const r=await api('revokePasskey',{credentialId:id});
   if(!r.ok) return toast(r.message,'danger');
   if((LS.get('pk')||{}).id===id) PK.forget();
@@ -3499,7 +3558,7 @@ function vHelp(){
         <span class="badge-st st-cancel">Cancelled — withdrawn</span>
       </div>
     </div>
-    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.8</div>
+    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.9</div>
   </div>`);
 }
 

@@ -211,6 +211,39 @@ input:-webkit-autofill:focus,input:-webkit-autofill:active{
 .mascot.sad .brow{transform:translateY(4px) rotate(var(--r,0deg))}
 .brow{transition:transform 200ms}
 
+/* ---- passkey unlock ---- */
+.pk-unlock{margin-bottom:6px}
+.pk-btn{width:100%;display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(16,185,129,.18),rgba(16,185,129,.07));
+  border:1.5px solid rgba(52,211,153,.34);color:#EAF1FF;text-align:left;
+  transition:all var(--t)}
+.pk-btn:hover{border-color:#34D399;background:linear-gradient(135deg,rgba(16,185,129,.28),rgba(16,185,129,.12));
+  transform:translateY(-1px)}
+.pk-btn:active{transform:translateY(0)}
+.pk-ic{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none;
+  background:rgba(52,211,153,.2);color:#6EE7B7;font-size:21px}
+.pk-btn.busy .pk-ic{animation:pkPulse 1.1s ease-in-out infinite}
+@keyframes pkPulse{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}
+  50%{box-shadow:0 0 0 9px rgba(52,211,153,0)}}
+.pk-txt{flex:1;min-width:0}
+.pk-txt b{display:block;font-size:14.5px;font-weight:650}
+.pk-txt small{display:block;color:#93A4C4;font-size:11.5px;margin-top:1px}
+.pk-go{color:#6E82A6;font-size:14px}
+.pk-or{display:flex;align-items:center;gap:12px;margin:18px 0 14px;color:#6E82A6;font-size:11.5px}
+.pk-or:before,.pk-or:after{content:"";flex:1;height:1px;background:rgba(255,255,255,.1)}
+
+/* ---- create passkey prompt ---- */
+.pk-modal .modal-content{border-radius:24px;border:1px solid var(--line);text-align:center}
+.pk-hero{width:74px;height:74px;margin:6px auto 18px;border-radius:24px;display:grid;place-items:center;
+  font-size:33px;color:#fff;background:var(--accent-grad);box-shadow:var(--sh-3);
+  animation:keyIn .5s cubic-bezier(.34,1.4,.5,1)}
+.pk-modal h5{font-size:21px;margin-bottom:9px}
+.pk-modal p{color:var(--text-2);font-size:13.5px;line-height:1.6;margin-bottom:0}
+.pk-dev{display:inline-flex;align-items:center;gap:8px;margin-top:16px;padding:8px 14px;
+  border-radius:11px;background:var(--accent-soft);color:var(--accent-2);font-size:12.5px;font-weight:600}
+.pk-skip{background:none;border:0;color:var(--slate);font-size:13.5px;font-weight:600;padding:10px}
+.pk-skip:hover{color:var(--text)}
+
 /* ---- forgot-password panel ---- */
 .reset-pane{position:absolute;inset:0;background:rgba(20,29,51,.97);backdrop-filter:blur(22px);
   border-radius:26px;padding:52px 30px 30px;opacity:0;visibility:hidden;
@@ -734,6 +767,15 @@ html,body{overflow-x:hidden;max-width:100%}
         <a href="#" onclick="forgotPw();return false">Forgot password?</a>
       </div>
 
+      <div class="pk-unlock hide" id="pkUnlock">
+        <button class="pk-btn" onclick="doPasskeyLogin()">
+          <span class="pk-ic"><i class="bi bi-fingerprint" id="pkIcon"></i></span>
+          <span class="pk-txt"><b id="pkName">Unlock</b><small id="pkWho"></small></span>
+          <i class="bi bi-chevron-right pk-go"></i>
+        </button>
+        <div class="pk-or"><span>or use your password</span></div>
+      </div>
+
       <button class="btn-doorbtn" id="lgBtn" onclick="doLogin()">
         <span class="doorbtn__label">Sign in</span>
         <span class="dooric">
@@ -869,6 +911,21 @@ html,body{overflow-x:hidden;max-width:100%}
     <div class="modal-body" id="dtBody"></div>
     <div class="modal-footer no-print" id="dtFoot"></div></div></div></div>
 
+<!-- Create passkey prompt -->
+<div class="modal fade pk-modal" id="mPasskey" tabindex="-1"><div class="modal-dialog modal-dialog-centered">
+  <div class="modal-content"><div class="modal-body p-4">
+    <div class="pk-hero"><i class="bi bi-fingerprint" id="pkModalIcon"></i></div>
+    <h5 id="pkModalTitle">Create passkey?</h5>
+    <p id="pkModalText">Use a passkey for faster, more secure sign-in on this device.
+      You can skip and set it up later.</p>
+    <div class="pk-dev"><i class="bi bi-laptop"></i><span id="pkModalDevice">This device</span></div>
+    <div class="d-grid gap-2 mt-4">
+      <button class="btn btn-accent py-2 fw-semibold" id="pkCreateBtn" onclick="createPasskey()">
+        Create passkey</button>
+      <button class="pk-skip" onclick="skipPasskey()">Skip for now</button>
+    </div>
+  </div></div></div></div>
+
 <!-- Generic form modal -->
 <div class="modal fade" id="mForm" tabindex="-1"><div class="modal-dialog">
   <div class="modal-content" style="border-radius:16px"><div class="modal-header">
@@ -916,6 +973,161 @@ const dshort = d => !d?'—':new Date(d).toLocaleDateString('en-GB',{day:'2-digi
 const dtime  = d => !d?'—':new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const today  = () => new Date().toISOString().slice(0,10);
 const can = p => S.perms.includes(p);
+
+/* ================================ PASSKEYS ================================ */
+/* Face ID, Touch ID, Windows Hello and Android biometrics via WebAuthn.
+   The biometric check unlocks a device token this server issued earlier; it is a
+   trusted-device unlock, not a replacement for the password on a new device. */
+const PK = {
+  supported: !!(window.PublicKeyCredential && navigator.credentials),
+  available: false,
+
+  async init(){
+    if(!this.supported) return;
+    try{
+      this.available = await PublicKeyCredential
+        .isUserVerifyingPlatformAuthenticatorAvailable();
+    }catch(e){ this.available = false; }
+  },
+
+  /** What the current device calls its biometric unlock, so the label feels native. */
+  label(){
+    const ua = navigator.userAgent;
+    if(/iPhone|iPad|iPod/.test(ua)) return { name:'Face ID / Touch ID', icon:'apple' };
+    if(/Macintosh/.test(ua)) return { name:'Touch ID', icon:'apple' };
+    if(/Android/.test(ua)) return { name:'fingerprint', icon:'fingerprint' };
+    if(/Windows/.test(ua)) return { name:'Windows Hello', icon:'windows' };
+    return { name:'passkey', icon:'shield-lock' };
+  },
+  deviceName(){
+    const ua=navigator.userAgent;
+    const os = /iPhone/.test(ua)?'iPhone': /iPad/.test(ua)?'iPad': /Macintosh/.test(ua)?'Mac'
+             : /Android/.test(ua)?'Android phone': /Windows/.test(ua)?'Windows PC'
+             : /Linux/.test(ua)?'Linux PC':'Device';
+    const br = /Edg\//.test(ua)?'Edge': /Chrome\//.test(ua)?'Chrome'
+             : /Safari\//.test(ua)?'Safari': /Firefox\//.test(ua)?'Firefox':'Browser';
+    return os+' · '+br;
+  },
+
+  rand(n){ return crypto.getRandomValues(new Uint8Array(n)); },
+  b64(buf){
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  },
+
+  /** Create a platform credential and bind it to a server-issued device token. */
+  async register(){
+    if(!this.available) throw new Error('This device has no biometric unlock available.');
+    const cred = await navigator.credentials.create({ publicKey:{
+      challenge: this.rand(32),
+      rp:{ name:'Expense Management', id:location.hostname },
+      user:{ id:new TextEncoder().encode(S.user.UserID),
+             name:S.user.Username, displayName:S.user.Name },
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{ authenticatorAttachment:'platform',
+        residentKey:'preferred', userVerification:'required' },
+      timeout:60000, attestation:'none'
+    }});
+    if(!cred) throw new Error('Setup was cancelled.');
+    const credentialId = this.b64(cred.rawId);
+    const r = await api('registerPasskey',{ credentialId,
+      deviceName:this.deviceName(), platform:this.label().name });
+    if(!r.ok) throw new Error(r.message);
+    LS.set('pk', { id:credentialId, token:r.deviceToken,
+                   user:S.user.Username, name:S.user.Name });
+    return r;
+  },
+
+  /** Ask for the biometric, then exchange the released token for a session. */
+  async unlock(){
+    const saved = LS.get('pk');
+    if(!saved || !saved.id) throw new Error('No passkey is saved on this device.');
+    const raw = Uint8Array.from(
+      atob(saved.id.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
+    const assertion = await navigator.credentials.get({ publicKey:{
+      challenge:this.rand(32), rpId:location.hostname,
+      allowCredentials:[{ id:raw, type:'public-key',
+        transports:['internal','hybrid'] }],
+      userVerification:'required', timeout:60000
+    }});
+    if(!assertion) throw new Error('Unlock was cancelled.');
+    const r = await api('passkeyLogin',{ credentialId:saved.id,
+      deviceToken:saved.token, agent:navigator.userAgent });
+    if(!r.ok){ LS.del('pk'); throw new Error(r.message); }
+    return r;
+  },
+
+  has(){ const s=LS.get('pk'); return !!(s && s.id && s.token); },
+  forget(){ LS.del('pk'); }
+};
+
+/* ---- passkey flows on the login screen ---- */
+async function showPasskeyOption(){
+  await PK.init();
+  const box=document.getElementById('pkUnlock');
+  if(!box || !PK.available || !PK.has()) return;
+  const saved=LS.get('pk'), lab=PK.label();
+  document.getElementById('pkIcon').className =
+    'bi bi-'+(lab.icon==='apple'?'person-badge':lab.icon==='windows'?'windows':
+              lab.icon==='fingerprint'?'fingerprint':'shield-lock');
+  document.getElementById('pkName').textContent='Unlock with '+lab.name;
+  document.getElementById('pkWho').textContent=saved.name?('Signed in as '+saved.name):'';
+  box.classList.remove('hide');
+}
+
+async function doPasskeyLogin(){
+  const btn=document.querySelector('.pk-btn'), al=document.getElementById('loginAlert');
+  btn.classList.add('busy'); al.classList.add('hide');
+  MASCOT.mood(null);
+  try{
+    const r=await PK.unlock();
+    S.token=r.token; S.user=r.user; S.perms=r.perms; S.settings=r.settings;
+    LS.set('token',r.token);
+    MASCOT.mood('happy'); chime('done');
+    await wait(320);
+    await startApp();
+  }catch(e){
+    btn.classList.remove('busy');
+    const msg=/cancel|abort|NotAllowed/i.test(e.name+e.message)
+      ? 'Unlock cancelled. Use your password instead.' : e.message;
+    al.textContent=msg; al.classList.remove('hide');
+    MASCOT.mood('sad'); setTimeout(()=>MASCOT.mood(null),2000);
+    if(!PK.has()) document.getElementById('pkUnlock').classList.add('hide');
+  }
+}
+
+/** Offered once after a password sign-in, unless the user has said no before. */
+async function offerPasskey(){
+  await PK.init();
+  if(!PK.available || PK.has() || LS.get('pkSkipped')) return;
+  const lab=PK.label();
+  document.getElementById('pkModalIcon').className =
+    'bi bi-'+(lab.icon==='fingerprint'?'fingerprint':lab.icon==='windows'?'windows':'person-badge');
+  document.getElementById('pkModalTitle').textContent =
+    lab.icon==='apple' ? 'Set up '+lab.name+'?' : 'Create passkey?';
+  document.getElementById('pkModalText').textContent =
+    'Use '+lab.name+' for faster, more secure sign-in on this device. '+
+    'You can skip and set it up later from your profile.';
+  document.getElementById('pkModalDevice').textContent=PK.deviceName();
+  new bootstrap.Modal('#mPasskey').show();
+}
+async function createPasskey(){
+  const btn=document.getElementById('pkCreateBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Waiting for your device';
+  try{
+    await PK.register();
+    bootstrap.Modal.getInstance('#mPasskey')?.hide();
+    toast('Passkey created. Next time just '+PK.label().name+'.','success');
+    chime('done');
+  }catch(e){
+    toast(/cancel|abort|NotAllowed/i.test(e.name+e.message)
+      ? 'Setup cancelled.' : (e.message||'Could not create the passkey.'),'warn');
+  }finally{ btn.disabled=false; btn.textContent='Create passkey'; }
+}
+function skipPasskey(){
+  LS.set('pkSkipped',true);
+  bootstrap.Modal.getInstance('#mPasskey')?.hide();
+}
 
 /* ================================ LOGIN ================================ */
 /* ---- the mascot: eyes track the cursor, paws cover them for passwords ---- */
@@ -1070,6 +1282,7 @@ async function doLogin(){
     await startApp();
     if(r.user.MustChangePassword)
       setTimeout(()=>{ toast('Please change your temporary password.','warn'); go('profile'); }, 700);
+    else setTimeout(offerPasskey, 1400);
   }catch(e){
     btn.classList.remove('walking');
     fail('Cannot reach the server. Check your connection and the API URL.');
@@ -1125,6 +1338,7 @@ function hardLogout(msg){
   const st=document.getElementById('lgStatus'); if(st) st.classList.remove('on');
   const pw=document.getElementById('lgPass'); if(pw) pw.value='';
   MASCOT.hide(false); MASCOT.mood(null); MASCOT.peek(false); MASCOT.center();
+  showPasskeyOption();
   if(msg){ const al=document.getElementById('loginAlert'); al.textContent=msg; al.classList.remove('hide'); }
 }
 async function doLogout(){ try{ await api('logout'); }catch(e){} hardLogout(); }
@@ -1263,6 +1477,7 @@ async function boot(){
       LS.del('token');
     }
     document.getElementById('login').style.display='grid';
+    showPasskeyOption();
   }catch(err){
     const al=document.getElementById('loginAlert');
     if(al){ al.textContent='Startup error: '+(err.message||err); al.classList.remove('hide'); }
@@ -3152,6 +3367,7 @@ async function markAll(){ await api('markNotificationRead',{all:true}); loadNoti
 /* ================================ PROFILE ================================ */
 function vProfile(){
   const u=S.user;
+  setTimeout(loadPasskeys, 60);
   setView(`
   <div class="row g-3">
     <div class="col-lg-6"><div class="card-x p-4">
@@ -3175,12 +3391,61 @@ function vProfile(){
       <button class="btn btn-accent" onclick="changePw()">Update password</button>
     </div>
     <div class="card-x p-4 mt-3">
+      <h6 class="mb-1">Trusted devices</h6>
+      <div class="small text-muted-2 mb-3">Devices that can unlock with a fingerprint or face.
+        Remove any you no longer use.</div>
+      <div id="pkList"><div class="skel" style="height:56px"></div></div>
+      <button class="btn btn-soft btn-sm mt-3" id="pkAddBtn" onclick="addPasskeyFromProfile()">
+        <i class="bi bi-plus-lg me-1"></i>Set up this device</button>
+    </div>
+
+    <div class="card-x p-4 mt-3">
       <h6 class="mb-2">App</h6>
       <div class="small text-muted-2">Signed in as ${esc(u.Username)} · ${esc(S.settings.CompanyName||'')}</div>
       <button class="btn btn-outline-danger btn-sm mt-3" onclick="doLogout()">Sign out</button>
     </div></div>
   </div>`);
 }
+async function loadPasskeys(){
+  const box=document.getElementById('pkList'); if(!box) return;
+  await PK.init();
+  const r=await api('getPasskeys');
+  if(!r.ok) return box.innerHTML=`<div class="small text-danger">${esc(r.message)}</div>`;
+  const thisId=(LS.get('pk')||{}).id;
+  box.innerHTML = r.rows.length ? r.rows.map(k=>`
+    <div class="d-flex align-items-center gap-3 py-2 border-bottom" style="border-color:var(--line-2)!important">
+      <div class="cat-ic" style="width:36px;height:36px;font-size:16px"><i class="bi bi-fingerprint"></i></div>
+      <div class="flex-grow-1 min-w-0">
+        <div class="small fw-semibold text-truncate">${esc(k.DeviceName)}
+          ${k.CredentialID===thisId?'<span class="badge-st st-approved ms-1">This device</span>':''}</div>
+        <div class="small text-muted-2">Added ${dshort(k.CreatedDate)}${
+          k.LastUsed?' · last used '+dshort(k.LastUsed):' · not used yet'}</div>
+      </div>
+      <button class="btn btn-sm btn-link text-danger p-1" title="Remove"
+        onclick="revokePasskey('${esc(k.CredentialID)}')"><i class="bi bi-trash"></i></button>
+    </div>`).join('')
+    : `<div class="small text-muted-2">No trusted devices yet.</div>`;
+
+  const add=document.getElementById('pkAddBtn');
+  if(!PK.available){ add.disabled=true;
+    add.innerHTML='<i class="bi bi-info-circle me-1"></i>This device has no biometric unlock'; }
+  else if(PK.has()){ add.classList.add('hide'); }
+}
+async function addPasskeyFromProfile(){
+  const btn=document.getElementById('pkAddBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Waiting for your device';
+  try{ await PK.register(); toast('This device is now trusted.','success'); chime('done'); loadPasskeys(); }
+  catch(e){ toast(/cancel|abort|NotAllowed/i.test(e.name+e.message)?'Setup cancelled.':e.message,'warn'); }
+  finally{ btn.disabled=false; btn.innerHTML='<i class="bi bi-plus-lg me-1"></i>Set up this device'; }
+}
+async function revokePasskey(id){
+  if(!confirm('Remove this device? It will need a password to sign in again.')) return;
+  const r=await api('revokePasskey',{credentialId:id});
+  if(!r.ok) return toast(r.message,'danger');
+  if((LS.get('pk')||{}).id===id) PK.forget();
+  toast('Device removed.'); loadPasskeys();
+}
+
 async function changePw(){
   if(val('cpNew')!==val('cpConf')) return fErr('The two new passwords do not match.');
   if(val('cpNew').length<8) return fErr('New password must be at least 8 characters.');
@@ -3234,7 +3499,7 @@ function vHelp(){
         <span class="badge-st st-cancel">Cancelled — withdrawn</span>
       </div>
     </div>
-    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.7</div>
+    <div class="text-center small text-muted-2 mt-4">Expense Management · version 2.8</div>
   </div>`);
 }
 
